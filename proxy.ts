@@ -76,7 +76,9 @@ export function proxy(request: NextRequest) {
   // 3. Protected Routes: If not authenticated, redirect to /login
   if (!isAuthenticated) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("from", pathname);
+    if (pathname !== "/") {
+      loginUrl.searchParams.set("from", pathname);
+    }
     const response = NextResponse.redirect(loginUrl);
     // Clear invalid/expired cookie
     response.cookies.delete("token");

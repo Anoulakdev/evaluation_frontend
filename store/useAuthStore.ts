@@ -57,8 +57,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // Ignore logout errors
     } finally {
-      Cookies.remove("token");
-      Cookies.remove("access_token");
+      Cookies.remove("token", { path: "/" });
+      Cookies.remove("access_token", { path: "/" });
       if (typeof window !== "undefined") {
         localStorage.clear();
         sessionStorage.clear();

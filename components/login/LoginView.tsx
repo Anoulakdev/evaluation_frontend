@@ -82,6 +82,10 @@ export function LoginView() {
       });
 
       if (res.data.success) {
+        if (res.data.token) {
+          Cookies.set("token", res.data.token, { expires: 1 / 12, path: "/" });
+          localStorage.setItem("token", res.data.token);
+        }
         if (res.data.user) {
           setUser(res.data.user);
         }

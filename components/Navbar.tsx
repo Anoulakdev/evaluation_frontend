@@ -93,7 +93,10 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo Brand */}
           <div className="flex items-center space-x-3">
-            <Link href="/dashboard" className="flex items-center space-x-2.5 group">
+            <Link
+              href={user?.roleId === 1 ? "/users" : "/evaluaterole"}
+              className="flex items-center space-x-2.5 group"
+            >
               <Image
                 src="/edl.png"
                 alt="EDL Logo"
