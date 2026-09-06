@@ -34,6 +34,7 @@ import {
   UpdateUserData,
   ChangePasswordData,
   RoleItem,
+  PositionItem,
 } from "@/schemas/user.schema";
 import { CreateUserModal } from "./CreateUserModal";
 import { EditUserModal } from "./EditUserModal";
@@ -110,6 +111,10 @@ export function UserList() {
   const [unitFilter, setUnitFilter] = useState<number | "">("");
   const [unitList, setUnitList] = useState<{ id: number; name: string }[]>([]);
 
+  // Position Filter State
+  const [posFilter, setPosFilter] = useState<number | "">("");
+  const [positionList, setPositionList] = useState<PositionItem[]>([]);
+
   // Pagination State for TanStack Table
   const [{ pageIndex, pageSize }, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -143,6 +148,23 @@ export function UserList() {
 
   useEffect(() => {
     fetchRoles();
+  }, []);
+
+  // Fetch positions from Backend API (/positions/selectposition)
+  useEffect(() => {
+    axiosInstance
+      .get("/positions/selectposition")
+      .then((res) => {
+        const list = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+            ? res.data.data
+            : [];
+        setPositionList(list);
+      })
+      .catch((err) => {
+        console.warn("Failed to fetch positions:", err);
+      });
   }, []);
 
   // Cascading Step 1: Fetch Department List
@@ -321,6 +343,7 @@ export function UserList() {
           divisionId: divisionFilter || undefined,
           officeId: officeFilter || undefined,
           unitId: unitFilter || undefined,
+          posId: posFilter || undefined,
         },
       });
 
@@ -361,6 +384,7 @@ export function UserList() {
     divisionFilter,
     officeFilter,
     unitFilter,
+    posFilter,
   ]);
 
   // Search Trigger Reset Page Index
@@ -801,6 +825,23 @@ export function UserList() {
               {unitList.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Position Filter */}
+            <select
+              value={posFilter}
+              onChange={(e) => {
+                setPosFilter(e.target.value ? Number(e.target.value) : "");
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[150px] truncate"
+            >
+              <option value="">-- ຕຳແໜ່ງທັງໝົດ --</option>
+              {positionList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.pos_name || p.posnameId || `Position #${p.id}`}
                 </option>
               ))}
             </select>
