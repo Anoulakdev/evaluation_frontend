@@ -75,7 +75,7 @@ export function EditUserModal({
               setFetchedRoles(res.data);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
 
       // 2. Fetch Departments List
@@ -85,11 +85,11 @@ export function EditUserModal({
           const list = Array.isArray(res.data)
             ? res.data
             : Array.isArray(res.data?.data)
-            ? res.data.data
-            : [];
+              ? res.data.data
+              : [];
           setDepartments(list);
         })
-        .catch(() => {});
+        .catch(() => { });
 
       // 3. Fetch Positions List
       axiosInstance
@@ -98,11 +98,11 @@ export function EditUserModal({
           const list = Array.isArray(res.data)
             ? res.data
             : Array.isArray(res.data?.data)
-            ? res.data.data
-            : [];
+              ? res.data.data
+              : [];
           setPositions(list);
         })
-        .catch(() => {});
+        .catch(() => { });
 
       // 4. Fetch Divisions List if user has departmentId
       if (initDept) {
@@ -112,8 +112,8 @@ export function EditUserModal({
             const list = Array.isArray(res.data)
               ? res.data
               : Array.isArray(res.data?.data)
-              ? res.data.data
-              : [];
+                ? res.data.data
+                : [];
             setDivisions(list);
 
             const divObj = list.find((d: Record<string, unknown>) => Number(d.id) === Number(initDiv));
@@ -128,11 +128,11 @@ export function EditUserModal({
                     const uList = Array.isArray(uRes.data)
                       ? uRes.data
                       : Array.isArray(uRes.data?.data)
-                      ? uRes.data.data
-                      : [];
+                        ? uRes.data.data
+                        : [];
                     setUnits(uList);
                   })
-                  .catch(() => {});
+                  .catch(() => { });
               } else {
                 // Branch (branch_id = 2): Load offices for division
                 axiosInstance
@@ -141,11 +141,11 @@ export function EditUserModal({
                     const oList = Array.isArray(oRes.data)
                       ? oRes.data
                       : Array.isArray(oRes.data?.data)
-                      ? oRes.data.data
-                      : [];
+                        ? oRes.data.data
+                        : [];
                     setOffices(oList);
                   })
-                  .catch(() => {});
+                  .catch(() => { });
 
                 if (initOff) {
                   axiosInstance
@@ -154,16 +154,16 @@ export function EditUserModal({
                       const uList = Array.isArray(uRes.data)
                         ? uRes.data
                         : Array.isArray(uRes.data?.data)
-                        ? uRes.data.data
-                        : [];
+                          ? uRes.data.data
+                          : [];
                       setUnits(uList);
                     })
-                    .catch(() => {});
+                    .catch(() => { });
                 }
               }
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       } else {
         setDivisions([]);
         setOffices([]);
@@ -189,11 +189,11 @@ export function EditUserModal({
           const list = Array.isArray(res.data)
             ? res.data
             : Array.isArray(res.data?.data)
-            ? res.data.data
-            : [];
+              ? res.data.data
+              : [];
           setDivisions(list);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -214,11 +214,11 @@ export function EditUserModal({
             const list = Array.isArray(res.data)
               ? res.data
               : Array.isArray(res.data?.data)
-              ? res.data.data
-              : [];
+                ? res.data.data
+                : [];
             setUnits(list);
           })
-          .catch(() => {});
+          .catch(() => { });
       } else {
         axiosInstance
           .get(`/offices/selectoffice?divisionId=${newDivId}`)
@@ -226,11 +226,11 @@ export function EditUserModal({
             const list = Array.isArray(res.data)
               ? res.data
               : Array.isArray(res.data?.data)
-              ? res.data.data
-              : [];
+                ? res.data.data
+                : [];
             setOffices(list);
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
   };
@@ -248,11 +248,11 @@ export function EditUserModal({
           const list = Array.isArray(res.data)
             ? res.data
             : Array.isArray(res.data?.data)
-            ? res.data.data
-            : [];
+              ? res.data.data
+              : [];
           setUnits(list);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -269,8 +269,8 @@ export function EditUserModal({
       roleId: Number(roleId),
       departmentId: departmentId ? Number(departmentId) : undefined,
       divisionId: divisionId ? Number(divisionId) : undefined,
-      officeId: officeId ? Number(officeId) : undefined,
-      unitId: unitId ? Number(unitId) : undefined,
+      officeId: officeId ? Number(officeId) : null,
+      unitId: unitId ? Number(unitId) : null,
       posId: posId ? Number(posId) : undefined,
     };
 
@@ -443,8 +443,8 @@ export function EditUserModal({
                     {isBranch1
                       ? "-- ເລືອກໜ່ວຍງານ (Unit) --"
                       : officeId
-                      ? "-- ເລືອກໜ່ວຍງານ (Unit) --"
-                      : "-- ເລືອກຫ້ອງການກ່ອນ --"}
+                        ? "-- ເລືອກໜ່ວຍງານ (Unit) --"
+                        : "-- ເລືອກຫ້ອງການກ່ອນ --"}
                   </option>
                   {units.map((u) => (
                     <option key={u.id} value={u.id}>

@@ -162,8 +162,12 @@ export function TotalScoreView() {
 
       // Extract receiver info if present in response
       let receiverFromData: UserSelectItem | null = null;
-      const firstGroupKey = Object.keys(resData)[0];
-      const firstGroupItems = getRoleItems(resData[firstGroupKey]);
+      const firstGroupKey = Object.keys(resData).find(
+        (k) => k !== "_weightedCalculation",
+      );
+      const firstGroupItems = firstGroupKey
+        ? getRoleItems(resData[firstGroupKey])
+        : [];
       if (firstGroupItems.length > 0 && firstGroupItems[0].receiver) {
         const r = firstGroupItems[0].receiver;
         if (r) {

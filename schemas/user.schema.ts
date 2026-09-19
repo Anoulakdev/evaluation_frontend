@@ -12,11 +12,11 @@ export const createUserSchema = z.object({
 
 export const updateUserSchema = z.object({
   roleId: z.number().int().min(1).optional(),
-  posId: z.number().optional(),
-  departmentId: z.number().optional(),
-  divisionId: z.number().optional(),
-  officeId: z.number().optional(),
-  unitId: z.number().optional(),
+  posId: z.number().optional().nullable(),
+  departmentId: z.number().optional().nullable(),
+  divisionId: z.number().optional().nullable(),
+  officeId: z.number().optional().nullable(),
+  unitId: z.number().optional().nullable(),
 });
 
 export const changePasswordSchema = z

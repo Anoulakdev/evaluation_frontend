@@ -222,67 +222,24 @@ export function ScoresView() {
     }
     setValidationError(null);
 
-    // Calculate sum for each title section
-    const s1_1 = scores.s1_1 || 0;
-    const s1_2 = scores.s1_2 || 0;
-    const s1_3 = scores.s1_3 || 0;
-    const s1_4 = scores.s1_4 || 0;
-    const s1_5 = scores.s1_5 || 0;
-    const s1_6 = scores.s1_6 || 0;
-    const s1_score = s1_1 + s1_2 + s1_3 + s1_4 + s1_5 + s1_6;
-
-    const s2_1 = scores.s2_1 || 0;
-    const s2_2 = scores.s2_2 || 0;
-    const s2_3 = scores.s2_3 || 0;
-    const s2_4 = scores.s2_4 || 0;
-    const s2_5 = scores.s2_5 || 0;
-    const s2_score = s2_1 + s2_2 + s2_3 + s2_4 + s2_5;
-
-    const s3_1 = scores.s3_1 || 0;
-    const s3_2 = scores.s3_2 || 0;
-    const s3_3 = scores.s3_3 || 0;
-    const s3_score = s3_1 + s3_2 + s3_3;
-
-    const s4_1 = scores.s4_1 || 0;
-    const s4_2 = scores.s4_2 || 0;
-    const s4_score = s4_1 + s4_2;
-
-    const total_score = s1_score + s2_score + s3_score + s4_score;
-
-    const totalSubtitlesCount = activeTitles.reduce(
-      (sum, title) => sum + (title.subtitles?.length || 0),
-      0
-    ) || 16;
-
-    const maxPossibleScore = totalSubtitlesCount * 10;
-    const percent_score = maxPossibleScore > 0
-      ? Number(((total_score / maxPossibleScore) * 100).toFixed(2))
-      : 0;
-
     const payload = {
       receiverId: evalId,
-      s1_1,
-      s1_2,
-      s1_3,
-      s1_4,
-      s1_5,
-      s1_6,
-      s1_score,
-      s2_1,
-      s2_2,
-      s2_3,
-      s2_4,
-      s2_5,
-      s2_score,
-      s3_1,
-      s3_2,
-      s3_3,
-      s3_score,
-      s4_1,
-      s4_2,
-      s4_score,
-      total_score,
-      percent_score,
+      s1_1: scores.s1_1 || 0,
+      s1_2: scores.s1_2 || 0,
+      s1_3: scores.s1_3 || 0,
+      s1_4: scores.s1_4 || 0,
+      s1_5: scores.s1_5 || 0,
+      s1_6: scores.s1_6 || 0,
+      s2_1: scores.s2_1 || 0,
+      s2_2: scores.s2_2 || 0,
+      s2_3: scores.s2_3 || 0,
+      s2_4: scores.s2_4 || 0,
+      s2_5: scores.s2_5 || 0,
+      s3_1: scores.s3_1 || 0,
+      s3_2: scores.s3_2 || 0,
+      s3_3: scores.s3_3 || 0,
+      s4_1: scores.s4_1 || 0,
+      s4_2: scores.s4_2 || 0,
     };
 
     try {

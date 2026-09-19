@@ -75,14 +75,15 @@ export interface ReceiverScoreItem {
 
 const roleMap: Record<number, string> = {
   1: "Admin",
-  2: "ຜູ້ອຳນວຍການໃຫຍ່",
-  3: "ຮອງຜູ້ອຳນວຍການໃຫ່ຍ",
-  4: "ຄະນະຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ",
-  5: "ຄະນະພະແນກ/ສູນ/ສາຂາ",
-  6: "ຄະນະຫ້ອງການ",
-  7: "ຄະນະໜ່ວຍງານ",
-  8: "ວິຊາການ",
-  9: "ປະເມີນຕົນເອງ",
+  2: "ຜູ້ອຳນວຍການ",
+  3: "ຮອງຜູ້ອຳນວຍການ",
+  4: 'ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ',
+  5: 'ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ',
+  6: 'ຄະນະພະແນກ/ສູນ/ສາຂາ',
+  7: 'ຄະນະຫ້ອງການ',
+  8: 'ຄະນະໜ່ວຍງານ',
+  9: 'ວິຊາການ',
+  10: 'ປະເມີນຕົນເອງ',
 };
 
 export const getRoleName = (roleId?: number | null): string => {
@@ -124,8 +125,11 @@ function UserAvatar({
 export function AllTotalScoreView() {
   // Main Data States
   const [results, setResults] = useState<ReceiverScoreItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
 
   // Departments & Divisions
   const [deptList, setDeptList] = useState<{ id: number; name: string }[]>([]);
@@ -199,27 +203,36 @@ export function AllTotalScoreView() {
     }
   }, [selectedDeptId]);
 
-  // Fetch All Total Scores
+  // Fetch All Total Scores (Paginated from Server)
   const fetchAllScores = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const params: Record<string, string | number> = {};
+      const params: Record<string, string | number> = {
+        page,
+        limit: pageSize,
+      };
       if (selectedDeptId) params.departmentId = Number(selectedDeptId);
       if (selectedDivisionId) params.divisionId = Number(selectedDivisionId);
+      if (roleFilter !== "ALL") params.roleId = Number(roleFilter);
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-      const res = await axiosInstance.get<ReceiverScoreItem[]>("/totals/resultall", {
+      const res = await axiosInstance.get("/totals/resultall", {
         params,
       });
 
       const resData = res.data as any;
-      const data = Array.isArray(resData)
-        ? resData
-        : Array.isArray(resData?.data)
-          ? resData.data
-          : [];
-      setResults(data);
+      if (resData && Array.isArray(resData.data)) {
+        setResults(resData.data);
+        setTotalCount(resData.total ?? resData.data.length);
+      } else if (Array.isArray(resData)) {
+        setResults(resData);
+        setTotalCount(resData.length);
+      } else {
+        setResults([]);
+        setTotalCount(0);
+      }
     } catch (err: any) {
       console.error("Failed to fetch all total scores:", err);
       setError(
@@ -227,6 +240,7 @@ export function AllTotalScoreView() {
         "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ"
       );
       setResults([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
@@ -234,7 +248,7 @@ export function AllTotalScoreView() {
 
   useEffect(() => {
     fetchAllScores();
-  }, [selectedDeptId, selectedDivisionId]);
+  }, [page, pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
 
   // Department / Division lookup maps
   const deptMap = useMemo(() => {
@@ -249,29 +263,11 @@ export function AllTotalScoreView() {
     return map;
   }, [divisionList]);
 
-  // Filtered and Sorted Data
-  const filteredResults = useMemo(() => {
+  // Sorted Data for Current Page
+  const paginatedData = useMemo(() => {
     let list = [...results];
 
-    // Search query filter
-    if (debouncedSearch.trim()) {
-      const q = debouncedSearch.trim().toLowerCase();
-      list = list.filter(
-        (item) =>
-          item.emp_code?.toLowerCase().includes(q) ||
-          item.first_name?.toLowerCase().includes(q) ||
-          item.last_name?.toLowerCase().includes(q) ||
-          `${item.first_name || ""} ${item.last_name || ""}`.toLowerCase().includes(q)
-      );
-    }
-
-    // Role filter
-    if (roleFilter !== "ALL") {
-      const targetRoleId = Number(roleFilter);
-      list = list.filter((item) => item.roleId === targetRoleId);
-    }
-
-    // Sorting
+    // Sorting within current page
     list.sort((a, b) => {
       if (sortBy === "SCORE_DESC") {
         return (b.finalTotal || 0) - (a.finalTotal || 0);
@@ -295,17 +291,14 @@ export function AllTotalScoreView() {
     });
 
     return list;
-  }, [results, debouncedSearch, roleFilter, sortBy]);
+  }, [results, sortBy]);
 
-  // Pagination slicing
-  const totalPages = Math.max(1, Math.ceil(filteredResults.length / pageSize));
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredResults.slice(start, start + pageSize);
-  }, [filteredResults, page, pageSize]);
+  // Total pages from server totalCount
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const handleResetFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setSelectedDeptId("");
     setSelectedDivisionId("");
     setRoleFilter("ALL");
@@ -313,87 +306,132 @@ export function AllTotalScoreView() {
     setPage(1);
   };
 
-  // Export Excel
-  const handleExportExcel = async () => {
-    if (filteredResults.length === 0) return;
+  // Fetch all filtered data for full Excel/PDF exports
+  const fetchExportData = async (): Promise<ReceiverScoreItem[]> => {
+    const params: Record<string, string | number> = {};
+    if (selectedDeptId) params.departmentId = Number(selectedDeptId);
+    if (selectedDivisionId) params.divisionId = Number(selectedDivisionId);
+    if (roleFilter !== "ALL") params.roleId = Number(roleFilter);
+    if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-    const XLSX = await import("xlsx");
-    const wb = XLSX.utils.book_new();
-    const sheetData: any[] = [];
-
-    sheetData.push(["ລາຍງານຜົນການປະເມີນ 360 ອົງສາລວມທັງໝົດ (EDL EVALUATION)"]);
-    sheetData.push([`ວັນທີສ້າງລາຍງານ: ${new Date().toLocaleDateString("lo-LA")}`]);
-    if (selectedDeptId) {
-      sheetData.push([`ພາກສ່ວນ/ຝ່າຍ: ${deptMap.get(Number(selectedDeptId)) || ""}`]);
-    }
-    sheetData.push([]);
-
-    sheetData.push([
-      "ລຳດັບ",
-      "ລະຫັດພະນັກງານ",
-      "ຊື່ ແລະ ນາມສະກຸນ",
-      "ຕຳແໜ່ງ",
-      "ບົດບາດ",
-      "ຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ",
-      "ພະແນກ/ສູນ/ສາຂາ",
-      "ສັດສ່ວນເປີເຊັນ",
-      "ຄະແນນສຸດທິ (100%)",
-    ]);
-
-    filteredResults.forEach((item, index) => {
-      const posName =
-        item.position?.name || item.position?.pos_name || "-";
-      const deptName =
-        item.department?.name ||
-        item.department?.department_name ||
-        (item.departmentId ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}` : "-");
-      const divName =
-        item.division?.name ||
-        item.division?.division_name ||
-        (item.divisionId ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}` : "-");
-
-      const wc = item._weightedCalculation;
-      const groups = wc
-        ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+    const res = await axiosInstance.get("/totals/resultall", { params });
+    const resData = res.data as any;
+    const list: ReceiverScoreItem[] = Array.isArray(resData?.data)
+      ? resData.data
+      : Array.isArray(resData)
+        ? resData
         : [];
-      const breakdownText =
-        groups.length > 0
-          ? groups.map((g: any) => `${g.label || ""}: ${g.weighted_score}%`).join(", ")
-          : "-";
 
-      sheetData.push([
-        index + 1,
-        item.emp_code || "",
-        `${item.first_name || ""} ${item.last_name || ""}`.trim(),
-        posName,
-        getRoleName(item.roleId),
-        deptName,
-        divName,
-        breakdownText,
-        item.finalTotal,
-      ]);
+    list.sort((a, b) => {
+      if (sortBy === "SCORE_DESC") return (b.finalTotal || 0) - (a.finalTotal || 0);
+      if (sortBy === "SCORE_ASC") return (a.finalTotal || 0) - (b.finalTotal || 0);
+      if (sortBy === "ROLE_ASC") return (a.roleId || 0) - (b.roleId || 0) || a.receiverId - b.receiverId;
+      if (sortBy === "ROLE_DESC") return (b.roleId || 0) - (a.roleId || 0) || a.receiverId - b.receiverId;
+      if (sortBy === "CODE_ASC") return (a.emp_code || "").localeCompare(b.emp_code || "");
+      if (sortBy === "NAME_ASC") return (a.first_name || "").localeCompare(b.first_name || "");
+      return 0;
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    XLSX.utils.book_append_sheet(wb, ws, "ຜົນການປະເມີນລວມ");
-    XLSX.writeFile(wb, `EDL_Evaluation_Overall_${new Date().getTime()}.xlsx`);
+    return list;
+  };
+
+  // Export Excel
+  const handleExportExcel = async () => {
+    if (totalCount === 0 || exportingExcel) return;
+
+    try {
+      setExportingExcel(true);
+      const exportData = await fetchExportData();
+      if (exportData.length === 0) return;
+
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+      const sheetData: any[] = [];
+
+      sheetData.push(["ລາຍງານຜົນການປະເມີນ 360 ອົງສາລວມທັງໝົດ (EDL EVALUATION)"]);
+      sheetData.push([`ວັນທີສ້າງລາຍງານ: ${new Date().toLocaleDateString("lo-LA")}`]);
+      if (selectedDeptId) {
+        sheetData.push([`ພາກສ່ວນ/ຝ່າຍ: ${deptMap.get(Number(selectedDeptId)) || ""}`]);
+      }
+      if (selectedDivisionId) {
+        sheetData.push([`ພະແນກ/ສູນ: ${divisionMap.get(Number(selectedDivisionId)) || ""}`]);
+      }
+      if (roleFilter !== "ALL") {
+        sheetData.push([`ບົດບາດ: ${getRoleName(Number(roleFilter))}`]);
+      }
+      sheetData.push([]);
+
+      sheetData.push([
+        "ລຳດັບ",
+        "ລະຫັດພະນັກງານ",
+        "ຊື່ ແລະ ນາມສະກຸນ",
+        "ຕຳແໜ່ງ",
+        "ບົດບາດ",
+        "ຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ",
+        "ພະແນກ/ສູນ/ສາຂາ",
+        "ສັດສ່ວນເປີເຊັນ",
+        "ຄະແນນສຸດທິ (100%)",
+      ]);
+
+      exportData.forEach((item, index) => {
+        const posName =
+          item.position?.name || item.position?.pos_name || "-";
+        const deptName =
+          item.department?.name ||
+          item.department?.department_name ||
+          (item.departmentId ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}` : "-");
+        const divName =
+          item.division?.name ||
+          item.division?.division_name ||
+          (item.divisionId ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}` : "-");
+
+        const wc = item._weightedCalculation;
+        const groups = wc
+          ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+          : [];
+        const breakdownText =
+          groups.length > 0
+            ? groups.map((g: any) => `${g.label || ""}: ${g.weighted_score}%`).join(", ")
+            : "-";
+
+        sheetData.push([
+          index + 1,
+          item.emp_code || "",
+          `${item.first_name || ""} ${item.last_name || ""}`.trim(),
+          posName,
+          getRoleName(item.roleId),
+          deptName,
+          divName,
+          breakdownText,
+          item.finalTotal,
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(sheetData);
+      XLSX.utils.book_append_sheet(wb, ws, "ຜົນການປະເມີນລວມ");
+      XLSX.writeFile(wb, `EDL_Evaluation_Overall_${new Date().getTime()}.xlsx`);
+    } catch (err) {
+      console.error("Excel Export error:", err);
+    } finally {
+      setExportingExcel(false);
+    }
   };
 
   // Export PDF using @react-pdf/renderer
-  const [exportingPDF, setExportingPDF] = useState(false);
-
   const handleExportPDF = async () => {
-    if (filteredResults.length === 0 || exportingPDF) return;
+    if (totalCount === 0 || exportingPDF) return;
 
     try {
       setExportingPDF(true);
+      const exportData = await fetchExportData();
+      if (exportData.length === 0) return;
 
       const [{ pdf }, { AllTotalScorePDFDocument }] = await Promise.all([
         import("@react-pdf/renderer"),
         import("./AllTotalScorePDF"),
       ]);
 
-      const formattedData = filteredResults.map((item) => {
+      const formattedData = exportData.map((item) => {
         const deptName =
           item.department?.name ||
           item.department?.department_name ||
@@ -483,16 +521,16 @@ export function AllTotalScoreView() {
 
             <button
               onClick={handleExportExcel}
-              disabled={results.length === 0}
+              disabled={totalCount === 0 || exportingExcel}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Excel</span>
+              <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? "animate-spin" : ""}`} />
+              <span>{exportingExcel ? "ກຳລັງດາວໂຫຼດ..." : "Excel"}</span>
             </button>
 
             <button
               onClick={handleExportPDF}
-              disabled={results.length === 0 || exportingPDF}
+              disabled={totalCount === 0 || exportingPDF}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <FileText className={`w-4 h-4 ${exportingPDF ? "animate-spin" : ""}`} />
@@ -610,12 +648,12 @@ export function AllTotalScoreView() {
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer"
             >
               <option value="ALL">-- ທຸກບົດບາດ (All Roles) --</option>
-              <option value="2">Role 2: ຜູ້ອຳນວຍການໃຫຍ່</option>
-              <option value="3">Role 3: ຮອງຜູ້ອຳນວຍການໃຫ່ຍ</option>
-              <option value="4">Role 4: ຄະນະຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
-              <option value="5">Role 5: ຄະນະພະແນກ/ສູນ/ສາຂາ</option>
-              <option value="6">Role 6: ຄະນະຫ້ອງການ</option>
-              <option value="7">Role 7: ຄະນະໜ່ວຍງານ</option>
+              <option value="3">Role 3: ຮອງຜູ້ອຳນວຍການ</option>
+              <option value="4">Role 4: ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
+              <option value="5">Role 5: ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
+              <option value="6">Role 6: ຄະນະພະແນກ/ສູນ/ສາຂາ</option>
+              <option value="7">Role 7: ຄະນະຫ້ອງການ</option>
+              <option value="8">Role 8: ຄະນະໜ່ວຍງານ</option>
             </select>
           </div>
         </div>
@@ -626,8 +664,8 @@ export function AllTotalScoreView() {
             <span className="font-bold text-slate-500">ຈັດຮຽງຕາມ:</span>
             <div className="flex flex-wrap gap-1.5">
               {[
-                { id: "ROLE_ASC", label: "ບົດບາດ (2 &rarr; 7)" },
-                { id: "ROLE_DESC", label: "ບົດບາດ (7 &rarr; 2)" },
+                { id: "ROLE_ASC", label: "ບົດບາດ (3 &rarr; 8)" },
+                { id: "ROLE_DESC", label: "ບົດບາດ (8 &rarr; 3)" },
                 { id: "SCORE_DESC", label: "ຄະແນນສູງ &rarr; ຕ່ຳ" },
                 { id: "SCORE_ASC", label: "ຄະແນນຕ່ຳ &rarr; ສູງ" },
                 { id: "CODE_ASC", label: "ລະຫັດພະນັກງານ" },
@@ -647,7 +685,7 @@ export function AllTotalScoreView() {
           </div>
 
           <div className="text-slate-500 font-semibold">
-            ພົບເຫັນທັງໝົດ <strong className="text-slate-800">{filteredResults.length}</strong> ທ່ານ
+            ພົບເຫັນທັງໝົດ <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
           </div>
         </div>
       </div>
@@ -669,7 +707,7 @@ export function AllTotalScoreView() {
             ລອງໃໝ່ອີກຄັ້ງ
           </button>
         </div>
-      ) : filteredResults.length === 0 ? (
+      ) : totalCount === 0 ? (
         <div className="p-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm space-y-3">
           <Info className="w-10 h-10 text-slate-300 mx-auto" />
           <h4 className="font-bold text-base text-slate-700">ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນ</h4>
@@ -865,7 +903,7 @@ export function AllTotalScoreView() {
                 <option value={100}>100</option>
               </select>
               <span>
-                ຈາກທັງໝົດ <strong className="text-slate-800">{filteredResults.length}</strong> ລາຍການ
+                ຈາກທັງໝົດ <strong className="text-slate-800">{totalCount}</strong> ລາຍການ
               </span>
             </div>
 
@@ -1048,7 +1086,7 @@ export function AllTotalScoreView() {
           <div className="p-4 bg-white rounded-3xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500">
             <div>
               ສະແດງ <strong className="text-slate-800">{paginatedData.length}</strong> ຈາກທັງໝົດ{" "}
-              <strong className="text-slate-800">{filteredResults.length}</strong> ທ່ານ
+              <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
             </div>
             <div className="flex items-center gap-2">
               <button
