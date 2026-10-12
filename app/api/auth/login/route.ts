@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       password,
     });
 
-    const { token, user } = response.data;
+    const { token, user, isDefaultPassword } = response.data;
 
     // Create Next.js Response with httpOnly Cookie
     const res = NextResponse.json({
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
       message: "ເຂົ້າສູ່ລະບົບສຳເລັດ",
       user,
       token,
+      isDefaultPassword: Boolean(isDefaultPassword),
     });
 
     // Set token in httpOnly Cookie

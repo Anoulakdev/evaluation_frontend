@@ -23,7 +23,6 @@ export function ChangePasswordModal({
   user,
   onSubmit,
 }: ChangePasswordModalProps) {
-  const [oldpassword, setOldPassword] = useState("");
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +36,6 @@ export function ChangePasswordModal({
     setErrorMsg("");
 
     const payload: ChangePasswordData = {
-      oldpassword,
       password1,
       password2,
     };
@@ -52,7 +50,6 @@ export function ChangePasswordModal({
 
     try {
       await onSubmit(user.id, payload);
-      setOldPassword("");
       setPassword1("");
       setPassword2("");
       onClose();
@@ -76,7 +73,7 @@ export function ChangePasswordModal({
             </div>
             <div>
               <h3 className="font-bold text-base tracking-tight">
-                ປ່ຽນລະຫັດຜ່ານ (Change Password)
+                ປ່ຽນລະຫັດຜ່ານ
               </h3>
               <p className="text-xs text-sky-100">
                 @{user.username} • {user.first_name} {user.last_name}
@@ -101,20 +98,7 @@ export function ChangePasswordModal({
 
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700">
-              ລະຫັດຜ່ານເກົ່າ (Old Password) <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              type={showPassword ? "text" : "password"}
-              required
-              value={oldpassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              placeholder="ປ້ອນລະຫັດຜ່ານເກົ່າ..."
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">
-              ລະຫັດຜ່ານໃໝ່ (New Password) <span className="text-rose-500">*</span>
+              ລະຫັດຜ່ານໃໝ່ <span className="text-rose-500">*</span>
             </label>
             <Input
               type={showPassword ? "text" : "password"}
@@ -128,7 +112,7 @@ export function ChangePasswordModal({
           <div className="space-y-1.5">
             <div className="flex justify-between items-center text-xs">
               <label className="font-bold text-slate-700">
-                ຍືນຢັນລະຫັດຜ່ານໃໝ່ (Confirm New Password) <span className="text-rose-500">*</span>
+                ຍືນຢັນລະຫັດຜ່ານໃໝ່ <span className="text-rose-500">*</span>
               </label>
               <button
                 type="button"

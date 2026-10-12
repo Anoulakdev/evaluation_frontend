@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Building,
   RefreshCw,
+  Edit3,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useEvaluationStore } from "@/store/useEvaluationStore";
@@ -72,6 +73,7 @@ export function ScoresView() {
     currentStep,
     scores,
     setScore,
+    setCurrentStep,
     nextStep,
     prevStep,
     initEvaluation,
@@ -220,6 +222,16 @@ export function ScoresView() {
       setValidationError("ກະລຸນາເລືອກຄະແນນໃຫ້ຄົບທຸກຫົວຂໍ້ກ່ອນບັນທຶກ");
       return;
     }
+
+    const missingSubs = allSubtitles.filter(
+      (s) => !scores[s.fieldName] || scores[s.fieldName] <= 0
+    );
+    if (missingSubs.length > 0) {
+      setValidationError(
+        `ກະລຸນາເລືອກຄະແນນໃຫ້ຄົບທຸກຂໍ້ (ຍັງເຫຼືອ ${missingSubs.length} ຂໍ້) ກ່ອນບັນທຶກ`
+      );
+      return;
+    }
     setValidationError(null);
 
     const payload = {
@@ -269,6 +281,57 @@ export function ScoresView() {
   const receiverInitials = receiverName.slice(0, 2).toUpperCase();
 
   const totalSteps = activeTitles.length || 4;
+  const isLastStep = currentStep === totalSteps;
+
+  // Compute all scores from the store for summary and review
+  const allSubtitles = activeTitles.flatMap((t) => t.subtitles);
+  const totalSubtitlesCount = allSubtitles.length;
+  const answeredCount = allSubtitles.filter(
+    (s) => scores[s.fieldName] && scores[s.fieldName] > 0
+  ).length;
+
+  const maxScorePerQuestion =
+    activeScoreOptions.length > 0
+      ? activeScoreOptions[activeScoreOptions.length - 1]
+      : 10;
+
+  const grandMaxScore = totalSubtitlesCount * maxScorePerQuestion;
+  const grandTotalScore = allSubtitles.reduce(
+    (sum, s) => sum + (scores[s.fieldName] || 0),
+    0
+  );
+  const grandPercentage =
+    grandMaxScore > 0
+      ? Number(((grandTotalScore / grandMaxScore) * 100).toFixed(2))
+      : 0;
+
+  const titlesBreakdown = activeTitles.map((t, idx) => {
+    const tMax = t.subtitles.length * maxScorePerQuestion;
+    const tTotal = t.subtitles.reduce(
+      (sum, s) => sum + (scores[s.fieldName] || 0),
+      0
+    );
+    const tPercent =
+      tMax > 0 ? Number(((tTotal / tMax) * 100).toFixed(2)) : 0;
+    const tAnswered = t.subtitles.filter(
+      (s) => scores[s.fieldName] && scores[s.fieldName] > 0
+    ).length;
+
+    return {
+      title: t,
+      stepNum: idx + 1,
+      total: tTotal,
+      max: tMax,
+      percent: tPercent,
+      answeredCount: tAnswered,
+      isComplete: tAnswered === t.subtitles.length,
+      items: t.subtitles.map((sub, sIdx) => ({
+        sub,
+        itemNumber: sIdx + 1,
+        score: scores[sub.fieldName] || 0,
+      })),
+    };
+  });
 
   return (
     <div className="space-y-6 font-sans">
@@ -483,6 +546,162 @@ export function ScoresView() {
               );
             })}
           </div>
+
+          {/* All Scores Review & Summary Section (Displayed on final step before submit) */}
+          {isLastStep && (
+            <div className="rounded-3xl bg-white border border-slate-200/90 shadow-sm p-4 sm:p-6 space-y-4">
+              {/* Sleek Compact Stats Banner */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-sky-50 via-indigo-50/40 to-slate-50 border border-sky-100/90 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold shadow-sm shadow-sky-600/20 shrink-0">
+                    <Sparkles className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xs sm:text-sm font-black text-slate-800">
+                        ສະຫຼຸບຜົນຄະແນນການປະເມີນທັງໝົດ
+                      </h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        ກວດສອບກ່ອນບັນທຶກ
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium truncate">
+                      ຄະແນນທີ່ເລືອກໃນລະບົບທັງໝົດ {answeredCount}/{totalSubtitlesCount} ຂໍ້
+                    </p>
+                  </div>
+                </div>
+
+                {/* Compact Metric Badges */}
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  {/* Total Score */}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-sky-200 shadow-2xs">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">ຄະແນນລວມ:</span>
+                    <span className="text-xs sm:text-sm font-black text-sky-800 font-mono">
+                      {grandTotalScore}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-400">/{grandMaxScore}</span>
+                  </div>
+
+                  {/* Answer Status */}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-500">ສະຖານະ:</span>
+                    {answeredCount === totalSubtitlesCount ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-emerald-700">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ຄົບ {totalSubtitlesCount} ຂໍ້
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold text-amber-700">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                        ຍັງ {totalSubtitlesCount - answeredCount} ຂໍ້
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Compact & Fully Responsive Scores Table */}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+                <table className="w-full text-left text-xs table-fixed">
+                  <colgroup>
+                    <col className="w-9 sm:w-12" />
+                    <col className="w-auto" />
+                    <col className="w-16 sm:w-24" />
+                  </colgroup>
+                  <thead className="bg-slate-100/80 text-slate-600 text-[10px] sm:text-[11px] font-extrabold uppercase border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-2 sm:px-3 text-center">ລ/ດ</th>
+                      <th className="py-2.5 px-2 sm:px-3">ລາຍການປະເມີນທຸກຫົວຂໍ້</th>
+                      <th className="py-2.5 px-2 sm:px-3 text-center">ຄະແນນ</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {titlesBreakdown.map((t) => (
+                      <React.Fragment key={t.title.id}>
+                        {/* Section Header Row */}
+                        <tr className="bg-slate-50/95 font-bold text-slate-800 border-t border-slate-200">
+                          <td colSpan={2} className="py-2 px-2 sm:px-3">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                              <span className="w-5 h-5 rounded-md bg-sky-600 text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                                {t.stepNum}
+                              </span>
+                              <span className="text-[11px] sm:text-xs font-black text-slate-800">
+                                {t.title.name}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                ({t.items.length} ຂໍ້)
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 sm:px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-[10px] sm:text-[11px] font-mono font-black text-sky-800 bg-sky-100/80 px-1.5 sm:px-2 py-0.5 rounded-md">
+                                {t.total}/{t.max}
+                              </span>
+                              {t.stepNum < currentStep && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCurrentStep(t.stepNum)}
+                                  className="inline-flex items-center gap-0.5 px-1.5 sm:px-2 py-0.5 rounded-md bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 hover:border-sky-300 text-[10px] font-bold transition-all shadow-2xs cursor-pointer shrink-0"
+                                  title="ກັບໄປແກ້ໄຂຄະແນນຫົວຂໍ້ນີ້"
+                                >
+                                  <Edit3 className="w-2.5 h-2.5 text-sky-600" />
+                                  <span className="hidden sm:inline">ແກ້ໄຂ</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Subtitle Rows */}
+                        {t.items.map((item) => (
+                          <tr key={item.sub.id} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-2 px-2 sm:px-3 text-center text-slate-400 font-mono text-[10px] sm:text-[11px] font-bold align-middle">
+                              {t.stepNum}.{item.itemNumber}
+                            </td>
+                            <td className="py-2 px-2 sm:px-3 text-slate-700 font-medium leading-relaxed align-middle">
+                              <span className="text-[11px] sm:text-xs">{item.sub.name}</span>
+                            </td>
+                            <td className="py-2 px-2 sm:px-3 text-center align-middle">
+                              {item.score > 0 ? (
+                                <span className="inline-flex items-center justify-center min-w-[2rem] sm:min-w-[2.5rem] px-2 py-0.5 rounded-lg bg-sky-50 border border-sky-300 text-sky-800 font-black font-mono text-[11px] sm:text-xs">
+                                  {item.score}
+                                </span>
+                              ) : (
+                                <span className="inline-block px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                                  ຍັງບໍ່ເລືອກ
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                  {/* Table Summary Footer Row */}
+                  <tfoot className="bg-slate-100/90 border-t-2 border-slate-200 font-black text-slate-800 text-xs">
+                    <tr>
+                      <td colSpan={2} className="py-2.5 px-3">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+                          <span className="text-[11px] font-extrabold text-slate-700">
+                            ຄະແນນລວມທັງໝົດ ({answeredCount}/{totalSubtitlesCount} ຂໍ້):
+                          </span>
+                          <span className="text-slate-500 font-semibold text-[11px]">
+                            ຄິດໄລ່ເປັນເປີເຊັນ: <strong className="text-indigo-700 font-mono font-black">{grandPercentage}%</strong>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-2 sm:px-3 text-center">
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-lg bg-sky-600 text-white font-mono font-black text-[11px] sm:text-xs shadow-2xs">
+                          {grandTotalScore}/{grandMaxScore}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Navigation Controls Bar (Next / Prev / Submit) */}
           <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex items-center justify-between">

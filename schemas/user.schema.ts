@@ -21,7 +21,7 @@ export const updateUserSchema = z.object({
 
 export const changePasswordSchema = z
   .object({
-    oldpassword: z.string().min(1, "ກະລຸນາປ້ອນລະຫັດຜ່ານເກົ່າ"),
+    oldpassword: z.string().optional(),
     password1: z.string().min(6, "ລະຫັດຜ່ານໃໝ່ຕ້ອງມີຢ່າງນ້ອຍ 6 ຕົວອັກສອນ"),
     password2: z.string().min(6, "ກະລຸນາຍືນຢັນລະຫັດຜ່ານໃໝ່"),
   })

@@ -15,9 +15,12 @@ import {
   Users,
   LockKeyhole,
   CheckCircle2,
+  KeyRound,
 } from "lucide-react";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { toast } from "react-toastify";
+import { axiosInstance } from "@/lib/axiosInstance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -32,6 +35,15 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Force Change Password Modal States (for default password login)
+  const [showForceChangeModal, setShowForceChangeModal] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [modalError, setModalError] = useState("");
 
   // Check if user is already logged in with active valid token
   useEffect(() => {
@@ -89,10 +101,20 @@ export function LoginView() {
         if (res.data.user) {
           setUser(res.data.user);
         }
-        if (res.data.user?.roleId === 1) {
-          router.push("/users");
+
+        const isDefault =
+          Boolean(res.data.isDefaultPassword) ||
+          password.trim() === "EDL1234";
+
+        if (isDefault) {
+          setLoggedInUser(res.data.user);
+          setShowForceChangeModal(true);
         } else {
-          router.push("/evaluaterole");
+          if (res.data.user?.roleId === 1) {
+            router.push("/users");
+          } else {
+            router.push("/evaluaterole");
+          }
         }
       } else {
         setErrorMsg(res.data.message || "ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
@@ -108,6 +130,68 @@ export function LoginView() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleForceChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError("");
+
+    if (newPassword.trim().length < 6) {
+      setModalError("ລະຫັດຜ່ານໃໝ່ຕ້ອງມີຢ່າງນ້ອຍ 6 ຕົວອັກສອນ");
+      return;
+    }
+
+    if (newPassword.trim() === "EDL1234") {
+      setModalError("ລະຫັດຜ່ານໃໝ່ຕ້ອງບໍ່ຄືກັບລະຫັດເລີ່ມຕົ້ນ");
+      return;
+    }
+
+    if (newPassword.trim() !== confirmPassword.trim()) {
+      setModalError("ລະຫັດຜ່ານໃໝ່ ແລະ ການຍືນຢັນລະຫັດຜ່ານບໍ່ກົງກັນ");
+      return;
+    }
+
+    if (!loggedInUser?.id) return;
+
+    setIsChangingPassword(true);
+    try {
+      await axiosInstance.put(`/users/changepassword/${loggedInUser.id}`, {
+        password1: newPassword.trim(),
+        password2: confirmPassword.trim(),
+      });
+
+      toast.success("ປ່ຽນລະຫັດຜ່ານໃໝ່ສຳເລັດແລ້ວ!");
+      setShowForceChangeModal(false);
+
+      if (loggedInUser.roleId === 1) {
+        router.push("/users");
+      } else {
+        router.push("/evaluaterole");
+      }
+    } catch (err: unknown) {
+      let msg = "ເກີດຂໍ້ຜິດພາດໃນການປ່ຽນລະຫັດຜ່ານ";
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        msg = Array.isArray(err.response.data.message)
+          ? err.response.data.message[0]
+          : err.response.data.message;
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setModalError(msg);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleCancelForceChange = () => {
+    Cookies.remove("token", { path: "/" });
+    localStorage.removeItem("token");
+    setUser(null);
+    setLoggedInUser(null);
+    setShowForceChangeModal(false);
+    setNewPassword("");
+    setConfirmPassword("");
+    setModalError("");
   };
 
   return (
@@ -301,6 +385,114 @@ export function LoginView() {
         </div>
 
       </div>
+
+      {/* Force Change Password Modal */}
+      {showForceChangeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md font-sans animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-md overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-white px-6 py-5 flex items-start gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                <KeyRound className="w-6 h-6 text-yellow-100" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-black text-base sm:text-lg tracking-tight">
+                  ແຈ້ງເຕືອນ: ຕ້ອງປ່ຽນລະຫັດຜ່ານທັນທີ
+                </h3>
+                <p className="text-xs text-amber-100/90 leading-relaxed">
+                  ທ່ານໄດ້ເຂົ້າສູ່ລະບົບດ້ວຍລະຫັດເລີ່ມຕົ້ນ. ເພື່ອຄວາມປອດໄພ, ກະລຸນາຕັ້ງລະຫັດຜ່ານໃໝ່ກ່ອນເລີ່ມໃຊ້ງານ.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleForceChangePassword} className="p-6 space-y-4">
+              {/* User badge */}
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 font-black text-xs flex items-center justify-center shrink-0">
+                  {loggedInUser?.username?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div className="overflow-hidden text-xs">
+                  <p className="font-black text-slate-800 truncate">
+                    {loggedInUser?.first_name || ""} {loggedInUser?.last_name || ""}
+                  </p>
+                  <p className="text-slate-400 font-mono text-[11px]">
+                    @{loggedInUser?.username}
+                  </p>
+                </div>
+              </div>
+
+              {/* Error message */}
+              {modalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
+              {/* New Password */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  ລະຫັດຜ່ານໃໝ່ <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showNewPassword ? "text" : "password"}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="ປ້ອນລະຫັດຜ່ານໃໝ່ (ຢ່າງນ້ອຍ 6 ຕົວ)..."
+                    className="pr-10 h-11 text-xs sm:text-sm rounded-xl"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">
+                  ຍືນຢັນລະຫັດຜ່ານໃໝ່ <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="ຍືນຢັນລະຫັດຜ່ານໃໝ່ອີກຄັ້ງ..."
+                  className="h-11 text-xs sm:text-sm rounded-xl"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelForceChange}
+                  disabled={isChangingPassword}
+                  className="rounded-xl text-xs font-bold h-10 px-4"
+                >
+                  ຍົກເລີກ
+                </Button>
+                <Button
+                  type="submit"
+                  variant="edl"
+                  disabled={isChangingPassword}
+                  className="rounded-xl text-xs font-black h-10 px-5 bg-amber-600 hover:bg-amber-700 shadow-md shadow-amber-600/20"
+                >
+                  {isChangingPassword ? "ກຳລັງບັນທຶກ..." : "ບັນທຶກ ແລະ ເຂົ້າສູ່ລະບົບ"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
