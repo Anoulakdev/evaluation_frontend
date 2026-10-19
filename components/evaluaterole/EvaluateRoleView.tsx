@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   ShieldCheck,
@@ -19,10 +19,31 @@ export interface RoleItem {
   name: string;
 }
 
+export interface RoleEvaluationSummary {
+  roleId: number;
+  roleName: string;
+  total: number;
+  evaluated: number;
+  remaining: number;
+  isCompleted: boolean;
+}
+
+export interface CountAllResult {
+  total: number;
+  evaluated: number;
+  remaining: number;
+  isAllCompleted: boolean;
+  uniqueTotal: number;
+  uniqueEvaluated: number;
+  uniqueRemaining: number;
+  roles: RoleEvaluationSummary[];
+}
+
 export function EvaluateRoleView() {
   const router = useRouter();
   const { user, fetchUser } = useAuthStore();
   const [roles, setRoles] = useState<RoleItem[]>([]);
+  const [countData, setCountData] = useState<CountAllResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
@@ -37,8 +58,20 @@ export function EvaluateRoleView() {
     try {
       setLoading(true);
       setError(null);
-      const res = await axiosInstance.get<RoleItem[]>("/roles/selectrole");
-      setRoles(res.data || []);
+      const [rolesRes, countRes] = await Promise.allSettled([
+        axiosInstance.get<RoleItem[]>("/roles/selectrole"),
+        axiosInstance.get<CountAllResult>("/users/countall"),
+      ]);
+
+      if (rolesRes.status === "fulfilled") {
+        setRoles(rolesRes.value.data || []);
+      } else {
+        throw rolesRes.reason;
+      }
+
+      if (countRes.status === "fulfilled") {
+        setCountData(countRes.value.data || null);
+      }
     } catch (err: any) {
       console.error("Failed to fetch select roles:", err);
       setError(
@@ -53,6 +86,14 @@ export function EvaluateRoleView() {
   useEffect(() => {
     fetchSelectRoles();
   }, []);
+
+  const roleSummaryMap = useMemo(() => {
+    const map = new Map<number, RoleEvaluationSummary>();
+    countData?.roles?.forEach((r) => {
+      map.set(r.roleId, r);
+    });
+    return map;
+  }, [countData]);
 
   const getRoleIcon = (id: number) => {
     switch (id) {
@@ -107,6 +148,22 @@ export function EvaluateRoleView() {
               <span className="bg-sky-950/60 px-3 py-1 rounded-lg border border-sky-400/30">
                 ສິດຜູ້ໃຊ້: <strong className="text-sky-300">{user.role?.name || `RoleId #${user.roleId}`}</strong>
               </span>
+              {countData && (
+                <span className="bg-sky-950/60 px-3 py-1 rounded-lg border border-sky-400/30 flex items-center gap-1.5">
+                  ສະຖານະ:{" "}
+                  <strong
+                    className={
+                      countData.isAllCompleted
+                        ? "text-emerald-300"
+                        : "text-amber-300"
+                    }
+                  >
+                    {countData.isAllCompleted
+                      ? `ປະເມີນຄົບທັງໝົດແລ້ວ (${countData.evaluated}/${countData.total})`
+                      : `ປະເມີນແລ້ວ ${countData.evaluated}/${countData.total} (ຍັງເຫຼືອ ${countData.remaining})`}
+                  </strong>
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -157,34 +214,114 @@ export function EvaluateRoleView() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {roles.map((role) => {
             const isSelected = selectedRoleId === role.id;
+            const summary = roleSummaryMap.get(role.id);
+            const totalInRole = summary ? summary.total : 0;
+            const evaluatedInRole = summary ? summary.evaluated : 0;
+            const remainingInRole = summary ? summary.remaining : 0;
+            const isEmptyRole = totalInRole === 0;
+            const isCompleted = summary ? summary.isCompleted : false;
+            const isGreen = isCompleted || isEmptyRole;
+
             return (
               <div
                 key={role.id}
                 onClick={() => handleSelectRole(role)}
-                className={`group relative p-5 rounded-2xl bg-white border transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between space-y-4 cursor-pointer ${isSelected
-                  ? "border-sky-500 ring-2 ring-sky-400/20 bg-sky-50/30"
-                  : "border-slate-200/90 hover:border-sky-300 hover:bg-slate-50/50"
-                  }`}
+                className={`group relative p-5 rounded-2xl border-2 transition-all duration-200 flex flex-col justify-between space-y-4 cursor-pointer ${
+                  isGreen
+                    ? "bg-emerald-50/20 border-emerald-500 shadow-xs hover:shadow-md hover:border-emerald-600 hover:bg-emerald-50/30"
+                    : "bg-white border-orange-400 shadow-xs hover:shadow-md hover:border-orange-500 hover:bg-orange-50/20"
+                } ${isSelected ? "ring-2 ring-sky-400/30" : ""}`}
               >
                 <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-2xl bg-slate-100/80 group-hover:bg-sky-100/80 transition-colors">
+                  <div
+                    className={`p-3 rounded-2xl transition-colors ${
+                      isGreen
+                        ? "bg-emerald-100/80 text-emerald-700"
+                        : "bg-orange-100/80 text-orange-700"
+                    }`}
+                  >
                     {getRoleIcon(role.id)}
                   </div>
+
+                  {summary && (
+                    <span
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold border flex items-center gap-1 shadow-2xs ${
+                        isGreen
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                          : "bg-orange-100 text-orange-800 border-orange-300"
+                      }`}
+                    >
+                      {isEmptyRole ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          0 ທ່ານ
+                        </>
+                      ) : isCompleted ? (
+                        <>
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          ສຳເລັດ ({evaluatedInRole}/{totalInRole})
+                        </>
+                      ) : (
+                        <>
+                          <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
+                          ຍັງເຫຼືອ {remainingInRole}
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <h3 className="text-base font-bold text-slate-800 group-hover:text-sky-700 transition-colors flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3
+                    className={`text-base font-bold transition-colors flex items-center justify-between ${
+                      isGreen
+                        ? "text-slate-800 group-hover:text-emerald-700"
+                        : "text-slate-800 group-hover:text-orange-600"
+                    }`}
+                  >
                     <span>{role.name}</span>
                   </h3>
+                  <p
+                    className={`text-xs font-semibold ${
+                      isGreen ? "text-emerald-700" : "text-orange-600"
+                    }`}
+                  >
+                    {totalInRole > 0
+                      ? isCompleted
+                        ? `ປະເມີນຄົບແລ້ວທັງໝົດ ${evaluatedInRole} ທ່ານ`
+                        : `ປະເມີນແລ້ວ ${evaluatedInRole} ຈາກທັງໝົດ ${totalInRole} ທ່ານ`
+                      : "ບໍ່ມີພະນັກງານໃນສິດທິນີ້"}
+                  </p>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-sky-600 group-hover:text-sky-700">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-sky-500" />
-                    ພ້ອມດຳເນີນການ
+                <div
+                  className={`pt-3 border-t flex items-center justify-between text-xs font-semibold ${
+                    isGreen
+                      ? "border-emerald-100 text-emerald-700"
+                      : "border-orange-100 text-orange-700"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5 font-bold">
+                    {isEmptyRole ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ບໍ່ມີພະນັກງານໃນສິດທິນີ້
+                      </>
+                    ) : isCompleted ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ປະເມີນຄົບທັງໝົດແລ້ວ
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                        ຍັງບໍ່ສຳເລັດທັງໝົດ
+                      </>
+                    )}
                   </span>
                   <span className="inline-flex items-center gap-1 font-bold group-hover:translate-x-1 transition-transform">
-                    ເລືອກປະເມີນ <ArrowRight className="w-4 h-4" />
+                    {isGreen ? "ກວດສອບ" : "ເລືອກປະເມີນ"}{" "}
+                    <ArrowRight className="w-4 h-4" />
                   </span>
                 </div>
               </div>

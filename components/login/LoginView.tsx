@@ -55,8 +55,11 @@ export function LoginView() {
         if (res.data?.success && res.data?.user) {
           if (!isMounted) return;
           setUser(res.data.user);
-          if (res.data.user.roleId === 1) {
+          const roleId = res.data.user.roleId;
+          if (roleId === 1 || roleId === 11 || roleId === 13 || roleId === 14) {
             router.replace("/users");
+          } else if (roleId === 12) {
+            router.replace("/alltotalscore");
           } else {
             router.replace("/evaluaterole");
           }
@@ -110,8 +113,11 @@ export function LoginView() {
           setLoggedInUser(res.data.user);
           setShowForceChangeModal(true);
         } else {
-          if (res.data.user?.roleId === 1) {
+          const roleId = res.data.user?.roleId;
+          if (roleId === 1 || roleId === 11 || roleId === 13 || roleId === 14) {
             router.push("/users");
+          } else if (roleId === 12) {
+            router.push("/alltotalscore");
           } else {
             router.push("/evaluaterole");
           }
@@ -163,8 +169,11 @@ export function LoginView() {
       toast.success("ປ່ຽນລະຫັດຜ່ານໃໝ່ສຳເລັດແລ້ວ!");
       setShowForceChangeModal(false);
 
-      if (loggedInUser.roleId === 1) {
+      const roleId = loggedInUser.roleId;
+      if (roleId === 1 || roleId === 11 || roleId === 13 || roleId === 14) {
         router.push("/users");
+      } else if (roleId === 12) {
+        router.push("/alltotalscore");
       } else {
         router.push("/evaluaterole");
       }

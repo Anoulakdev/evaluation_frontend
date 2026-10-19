@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Routes that only Admin (roleId === 1) can access according to Navbar.tsx
-const ADMIN_ONLY_ROUTES = [
-  "/users",
-  "/alltotalscore",
-  "/totalscore",
-  "/organization",
-  "/managedata",
+// Routes permissions by role according to Navbar.tsx
+const ROLE_PERMITTED_ROUTES: { route: string; roles: number[] }[] = [
+  { route: "/users", roles: [1, 11, 13, 14] },
+  { route: "/alltotalscore", roles: [1, 12] },
+  { route: "/totalscore", roles: [1, 12] },
+  { route: "/organization", roles: [1] },
+  { route: "/managedata", roles: [1] },
 ];
 
 // Helper to decode JWT payload without external library
@@ -26,7 +26,7 @@ function decodeJwtPayload(token: string): {
       atob(base64)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch {
@@ -67,7 +67,17 @@ export function proxy(request: NextRequest) {
   if (pathname === "/login") {
     if (isAuthenticated) {
       // If already logged in, redirect based on roleId
-      const targetPath = payload?.roleId === 1 ? "/users" : "/evaluaterole";
+      let targetPath = "/evaluaterole";
+      if (
+        payload?.roleId === 1 ||
+        payload?.roleId === 11 ||
+        payload?.roleId === 13 ||
+        payload?.roleId === 14
+      ) {
+        targetPath = "/users";
+      } else if (payload?.roleId === 12) {
+        targetPath = "/alltotalscore";
+      }
       return NextResponse.redirect(new URL(targetPath, request.url));
     }
     return NextResponse.next();
@@ -86,15 +96,12 @@ export function proxy(request: NextRequest) {
   }
 
   // 4. Role-based Access Control (RBAC) according to Navbar.tsx
-  // Only roleId === 1 (Admin) can access ADMIN_ONLY_ROUTES
-  const isAdminRoute = ADMIN_ONLY_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`)
-  );
-
-  if (isAdminRoute) {
-    if (payload?.roleId !== 1) {
-      // Non-admin user attempting to access Admin route -> redirect to /unauthorized
-      return NextResponse.redirect(new URL("/unauthorized", request.url));
+  for (const item of ROLE_PERMITTED_ROUTES) {
+    if (pathname === item.route || pathname.startsWith(`${item.route}/`)) {
+      if (!payload?.roleId || !item.roles.includes(payload.roleId)) {
+        return NextResponse.redirect(new URL("/unauthorized", request.url));
+      }
+      break;
     }
   }
 

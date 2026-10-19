@@ -102,9 +102,9 @@ export function ScoresView() {
           axiosInstance.get<ScoreApiItem[]>("/scores/selectscore"),
         ]);
 
-        const rawTitles = titlesRes.data || [];
-        const rawSubtitles = subtitlesRes.data || [];
-        const rawScores = scoresRes.data || [];
+        const rawTitles = (titlesRes.data || []).sort((a, b) => a.id - b.id);
+        const rawSubtitles = (subtitlesRes.data || []).sort((a, b) => a.id - b.id);
+        const rawScores = (scoresRes.data || []).sort((a, b) => a.sc_num - b.sc_num);
 
         const subsByTitleId = new Map<number, SubTitleData[]>();
         rawSubtitles.forEach((sub) => {

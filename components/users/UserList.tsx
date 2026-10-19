@@ -42,6 +42,7 @@ import { DeleteUserModal } from "./DeleteUserModal";
 import { ResetPasswordModal } from "./ResetPasswordModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { SyncUserModal } from "./SyncUserModal";
+import { useAuthStore } from "@/store/useAuthStore";
 
 const columnHelper = createColumnHelper<UserItem>();
 
@@ -77,6 +78,13 @@ function UserAvatar({
 }
 
 export function UserList() {
+  const { user: currentUser } = useAuthStore();
+  const isRole1 = currentUser?.roleId === 1;
+  const isRole11 = currentUser?.roleId === 11;
+  const isRole13 = currentUser?.roleId === 13;
+  const isRole14 = currentUser?.roleId === 14;
+  const canManageUsers = isRole1 || isRole11;
+
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -95,14 +103,38 @@ export function UserList() {
   const [authError, setAuthError] = useState(false);
 
   // Cascading Organization Filter States: Department -> Division -> Office -> Unit
-  const [deptFilter, setDeptFilter] = useState<number | "">("");
+  const [deptFilter, setDeptFilter] = useState<number | "">(() => {
+    return (isRole13 || isRole14) && currentUser?.departmentId
+      ? Number(currentUser.departmentId)
+      : "";
+  });
+
+  const [divisionFilter, setDivisionFilter] = useState<number | "">(() => {
+    return isRole14 && currentUser?.divisionId
+      ? Number(currentUser.divisionId)
+      : "";
+  });
+
+  // Auto-lock deptFilter if user is roleId 13 (AdminDepartment) or roleId 14 (AdminBranch)
+  useEffect(() => {
+    if ((isRole13 || isRole14) && currentUser?.departmentId) {
+      setDeptFilter(Number(currentUser.departmentId));
+    }
+  }, [isRole13, isRole14, currentUser?.departmentId]);
+
+  // Auto-lock divisionFilter if user is roleId 14 (AdminBranch)
+  useEffect(() => {
+    if (isRole14 && currentUser?.divisionId) {
+      setDivisionFilter(Number(currentUser.divisionId));
+    }
+  }, [isRole14, currentUser?.divisionId]);
+
   const [deptList, setDeptList] = useState<{ id: number; name: string }[]>([]);
 
   // Sync Department State
   const [syncDeptId, setSyncDeptId] = useState<string>("");
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  const [divisionFilter, setDivisionFilter] = useState<number | "">("");
   const [divisionList, setDivisionList] = useState<{ id: number; name: string; branch_id?: number }[]>([]);
 
   const [officeFilter, setOfficeFilter] = useState<number | "">("");
@@ -189,16 +221,26 @@ export function UserList() {
 
   // Cascading Step 2: Fetch Division List when Dept Filter changes
   useEffect(() => {
-    setDivisionFilter("");
+    if (!isRole14) {
+      setDivisionFilter("");
+    } else if (currentUser?.divisionId) {
+      setDivisionFilter(Number(currentUser.divisionId));
+    }
     setOfficeFilter("");
     setUnitFilter("");
     setDivisionList([]);
     setOfficeList([]);
     setUnitList([]);
 
-    if (deptFilter) {
+    const targetDeptId =
+      deptFilter ||
+      ((isRole13 || isRole14) && currentUser?.departmentId
+        ? Number(currentUser.departmentId)
+        : undefined);
+
+    if (targetDeptId) {
       axiosInstance
-        .get(`/divisions/selectdivision?departmentId=${deptFilter}`)
+        .get(`/divisions/selectdivision?departmentId=${targetDeptId}`)
         .then((res) => {
           const list = Array.isArray(res.data)
             ? res.data
@@ -215,7 +257,7 @@ export function UserList() {
         })
         .catch(() => { });
     }
-  }, [deptFilter]);
+  }, [deptFilter, isRole14, currentUser?.departmentId, currentUser?.divisionId]);
 
   // Cascading Step 3: Fetch Office or Unit List when Division Filter changes
   useEffect(() => {
@@ -333,14 +375,23 @@ export function UserList() {
     setLoading(true);
     setAuthError(false);
     try {
+      const activeDeptId =
+        (isRole13 || isRole14) && currentUser?.departmentId
+          ? Number(currentUser.departmentId)
+          : deptFilter || undefined;
+      const activeDivId =
+        isRole14 && currentUser?.divisionId
+          ? Number(currentUser.divisionId)
+          : divisionFilter || undefined;
+
       const response = await axiosInstance.get("/users", {
         params: {
           page: pageIndex + 1,
           limit: pageSize,
           search: debouncedSearch || undefined,
           roleId: roleFilter !== "ALL" ? roleFilter : undefined,
-          departmentId: deptFilter || undefined,
-          divisionId: divisionFilter || undefined,
+          departmentId: activeDeptId,
+          divisionId: activeDivId,
           officeId: officeFilter || undefined,
           unitId: unitFilter || undefined,
           posId: posFilter || undefined,
@@ -373,6 +424,20 @@ export function UserList() {
     }
   };
 
+  // Reset pageIndex to 0 whenever any filter or search query changes
+  useEffect(() => {
+    setPagination((prev) => (prev.pageIndex !== 0 ? { ...prev, pageIndex: 0 } : prev));
+  }, [
+    roleFilter,
+    debouncedSearch,
+    deptFilter,
+    divisionFilter,
+    officeFilter,
+    unitFilter,
+    posFilter,
+    pageSize,
+  ]);
+
   useEffect(() => {
     fetchUsers();
   }, [
@@ -385,6 +450,8 @@ export function UserList() {
     officeFilter,
     unitFilter,
     posFilter,
+    currentUser?.departmentId,
+    currentUser?.divisionId,
   ]);
 
   // Search Trigger Reset Page Index
@@ -412,9 +479,17 @@ export function UserList() {
   };
 
   const handleDeleteUser = async (id: number) => {
-    await axiosInstance.delete(`/users/${id}`);
-    showToast("ລຶບຜູ້ໃຊ້ສຳເລັດ!");
-    fetchUsers();
+    try {
+      await axiosInstance.delete(`/users/${id}`);
+      showToast("ລຶບຜູ້ໃຊ້ສຳເລັດ!");
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg =
+        isAxiosError(err) && err.response?.data?.message
+          ? String(err.response.data.message)
+          : "ເກີດຂໍ້ຜິດພາດໃນການລຶບຜູ້ໃຊ້";
+      showToast(msg);
+    }
   };
 
   const handleUpdateStatus = async (user: UserItem) => {
@@ -562,54 +637,58 @@ export function UserList() {
         },
       }),
 
-      columnHelper.display({
-        id: "actions",
-        header: () => <div className="text-right">ຈັດການ</div>,
-        cell: (info) => {
-          const u = info.row.original;
-          return (
-            <div className="flex items-center justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                title="ແກ້ໄຂຂໍ້ມູນ"
-                onClick={() => {
-                  setSelectedUser(u);
-                  setIsEditOpen(true);
-                }}
-              >
-                <Edit3 className="w-4 h-4 text-sky-600" />
-              </Button>
+      ...(canManageUsers
+        ? [
+          columnHelper.display({
+            id: "actions",
+            header: () => <div className="text-right">ຈັດການ</div>,
+            cell: (info) => {
+              const u = info.row.original;
+              return (
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="ແກ້ໄຂຂໍ້ມູນ"
+                    onClick={() => {
+                      setSelectedUser(u);
+                      setIsEditOpen(true);
+                    }}
+                  >
+                    <Edit3 className="w-4 h-4 text-sky-600" />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                title="ຣີເຊັດລະຫັດຜ່ານ"
-                onClick={() => {
-                  setSelectedUser(u);
-                  setIsResetPassOpen(true);
-                }}
-              >
-                <KeyRound className="w-4 h-4 text-amber-600" />
-              </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="ຣີເຊັດລະຫັດຜ່ານ"
+                    onClick={() => {
+                      setSelectedUser(u);
+                      setIsResetPassOpen(true);
+                    }}
+                  >
+                    <KeyRound className="w-4 h-4 text-amber-600" />
+                  </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                title="ລຶບຜູ້ໃຊ້"
-                onClick={() => {
-                  setSelectedUser(u);
-                  setIsDeleteOpen(true);
-                }}
-              >
-                <Trash2 className="w-4 h-4 text-rose-600" />
-              </Button>
-            </div>
-          );
-        },
-      }),
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="ລຶບຜູ້ໃຊ້"
+                    onClick={() => {
+                      setSelectedUser(u);
+                      setIsDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                  </Button>
+                </div>
+              );
+            },
+          }),
+        ]
+        : []),
     ],
-    [roles]
+    [roles, canManageUsers]
   );
 
   const paginationState = useMemo(
@@ -662,62 +741,64 @@ export function UserList() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 relative z-10 flex-wrap">
-          {/* Department Select for Syncing */}
-          <select
-            value={syncDeptId}
-            onChange={(e) => setSyncDeptId(e.target.value)}
-            className="px-3 py-1.5 text-xs bg-white text-slate-800 border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 font-bold h-9 max-w-[200px] truncate shadow-sm cursor-pointer"
-          >
-            <option value="">-- ເລືອກຝ່າຍ --</option>
-            {deptList.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+        {canManageUsers && (
+          <div className="flex items-center gap-2 relative z-10 flex-wrap">
+            {/* Department Select for Syncing */}
+            <select
+              value={syncDeptId}
+              onChange={(e) => setSyncDeptId(e.target.value)}
+              className="px-3 py-1.5 text-xs bg-white text-slate-800 border border-white/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 font-bold h-9 max-w-[200px] truncate shadow-sm cursor-pointer"
+            >
+              <option value="">-- ເລືອກຝ່າຍ --</option>
+              {deptList.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
 
-          <Button
-            variant="yellow"
-            size="sm"
-            onClick={async () => {
-              if (!syncDeptId) {
-                showToast("ກະລຸນາເລືອກຝ່າຍກ່ອນຊິງຄ໌ຂໍ້ມູນ");
-                return;
-              }
-              setIsSyncing(true);
-              try {
-                await handleSyncUser(Number(syncDeptId));
-              } catch (err: unknown) {
-                let msg = "ເກີດຂໍ້ຜິດພາດໃນການຊິງຄ໌ຂໍ້ມູນ";
-                if (isAxiosError(err) && err.response?.data?.message) {
-                  const respMsg = err.response.data.message;
-                  msg = Array.isArray(respMsg) ? respMsg.join(", ") : respMsg;
-                } else if (err instanceof Error) {
-                  msg = err.message;
+            <Button
+              variant="yellow"
+              size="sm"
+              onClick={async () => {
+                if (!syncDeptId) {
+                  showToast("ກະລຸນາເລືອກຝ່າຍກ່ອນຊິງຄ໌ຂໍ້ມູນ");
+                  return;
                 }
-                showToast(msg);
-              } finally {
-                setIsSyncing(false);
-              }
-            }}
-            disabled={isSyncing || loading}
-            className="text-xs font-bold h-9"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-            <span>ຊິງຄ໌ຂໍ້ມູນພະນັກງານ</span>
-          </Button>
+                setIsSyncing(true);
+                try {
+                  await handleSyncUser(Number(syncDeptId));
+                } catch (err: unknown) {
+                  let msg = "ເກີດຂໍ້ຜິດພາດໃນການຊິງຄ໌ຂໍ້ມູນ";
+                  if (isAxiosError(err) && err.response?.data?.message) {
+                    const respMsg = err.response.data.message;
+                    msg = Array.isArray(respMsg) ? respMsg.join(", ") : respMsg;
+                  } else if (err instanceof Error) {
+                    msg = err.message;
+                  }
+                  showToast(msg);
+                } finally {
+                  setIsSyncing(false);
+                }
+              }}
+              disabled={isSyncing || loading}
+              className="text-xs font-bold h-9"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              <span>ຊິງຄ໌ຂໍ້ມູນພະນັກງານ</span>
+            </Button>
 
-          <Button
-            variant="edl"
-            size="sm"
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-white text-sky-800 hover:bg-sky-50 shadow-md text-xs font-bold h-9"
-          >
-            <Plus className="w-4 h-4" />
-            <span>ເພີ່ມຜູ້ໃຊ້ໃໝ່</span>
-          </Button>
-        </div>
+            <Button
+              variant="edl"
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-white text-sky-800 hover:bg-sky-50 shadow-md text-xs font-bold h-9"
+            >
+              <Plus className="w-4 h-4" />
+              <span>ເພີ່ມຜູ້ໃຊ້ໃໝ່</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -759,36 +840,59 @@ export function UserList() {
             {/* Department Filter */}
             <select
               value={deptFilter}
+              disabled={isRole13 || isRole14}
               onChange={(e) => {
+                if (isRole13 || isRole14) return;
                 setDeptFilter(e.target.value ? Number(e.target.value) : "");
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
-              className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[150px] truncate"
+              className={`px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[150px] truncate ${isRole13 || isRole14 ? "opacity-75 cursor-not-allowed bg-slate-100" : ""
+                }`}
             >
-              <option value="">-- ຝ່າຍທັງໝົດ --</option>
-              {deptList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
+              {isRole13 || isRole14 ? (
+                <option value={currentUser?.departmentId || ""}>
+                  {deptList.find((d) => d.id === currentUser?.departmentId)?.name ||
+                    "ຝ່າຍຂອງທ່ານ"}
                 </option>
-              ))}
+              ) : (
+                <>
+                  <option value="">-- ຝ່າຍທັງໝົດ --</option>
+                  {deptList.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
 
             {/* Division Filter */}
             <select
               value={divisionFilter}
-              disabled={!deptFilter}
+              disabled={!deptFilter || isRole14}
               onChange={(e) => {
+                if (isRole14) return;
                 setDivisionFilter(e.target.value ? Number(e.target.value) : "");
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
-              className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[160px] truncate disabled:opacity-50"
+              className={`px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[160px] truncate disabled:opacity-50 ${isRole14 ? "opacity-75 cursor-not-allowed bg-slate-100" : ""
+                }`}
             >
-              <option value="">-- ພະແນກ/ສາຂາທັງໝົດ --</option>
-              {divisionList.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} {d.branch_id === 1 ? "(ສຳນັກງານໃຫຍ່)" : d.branch_id === 2 ? "(ສາຂາ)" : ""}
+              {isRole14 ? (
+                <option value={currentUser?.divisionId || ""}>
+                  {divisionList.find((d) => d.id === currentUser?.divisionId)?.name ||
+                    "ສາຂາຂອງທ່ານ"}
                 </option>
-              ))}
+              ) : (
+                <>
+                  <option value="">-- ພະແນກ/ສາຂາທັງໝົດ --</option>
+                  {divisionList.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} {d.branch_id === 1 ? "(ສຳນັກງານໃຫຍ່)" : d.branch_id === 2 ? "(ສາຂາ)" : ""}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
 
             {/* Office Filter (Disabled if branch_id = 1) */}

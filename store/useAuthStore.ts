@@ -30,6 +30,8 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+let inFlightFetchUserPromise: Promise<void> | null = null;
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
@@ -38,17 +40,27 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
 
   fetchUser: async () => {
-    try {
-      set({ isLoading: true });
-      const res = await axios.get("/api/auth/me");
-      if (res.data.success && res.data.user) {
-        set({ user: res.data.user, isAuthenticated: true, isLoading: false });
-      } else {
-        set({ user: null, isAuthenticated: false, isLoading: false });
-      }
-    } catch {
-      set({ user: null, isAuthenticated: false, isLoading: false });
+    if (inFlightFetchUserPromise) {
+      return inFlightFetchUserPromise;
     }
+
+    inFlightFetchUserPromise = (async () => {
+      try {
+        set({ isLoading: true });
+        const res = await axios.get("/api/auth/me");
+        if (res.data.success && res.data.user) {
+          set({ user: res.data.user, isAuthenticated: true, isLoading: false });
+        } else {
+          set({ user: null, isAuthenticated: false, isLoading: false });
+        }
+      } catch {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      } finally {
+        inFlightFetchUserPromise = null;
+      }
+    })();
+
+    return inFlightFetchUserPromise;
   },
 
   logout: async () => {

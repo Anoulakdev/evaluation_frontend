@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Database,
   FileText,
@@ -55,9 +55,9 @@ export function ManageDataView() {
         axiosInstance.get<ScoreItem[]>("/scores"),
       ]);
 
-      setTitlesList(tRes.data || []);
-      setSubTitlesList(sRes.data || []);
-      setScoresList(scRes.data || []);
+      setTitlesList((tRes.data || []).sort((a, b) => a.id - b.id));
+      setSubTitlesList((sRes.data || []).sort((a, b) => a.id - b.id));
+      setScoresList((scRes.data || []).sort((a, b) => a.sc_num - b.sc_num));
     } catch (err) {
       console.error("Failed to fetch manage data lists:", err);
       toast.error("ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້ ກະລຸນາລອງໃໝ່");
@@ -70,20 +70,28 @@ export function ManageDataView() {
     fetchAllData();
   }, []);
 
-  // Filtered Lists by Search
-  const filteredTitles = titlesList.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // Filtered Lists by Search (Memoized)
+  const filteredTitles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return titlesList;
+    return titlesList.filter((t) => t.name.toLowerCase().includes(q));
+  }, [titlesList, search]);
 
-  const filteredSubTitles = subTitlesList.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      (s.title?.name || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSubTitles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return subTitlesList;
+    return subTitlesList.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.title?.name || "").toLowerCase().includes(q)
+    );
+  }, [subTitlesList, search]);
 
-  const filteredScores = scoresList.filter((sc) =>
-    String(sc.sc_num).includes(search)
-  );
+  const filteredScores = useMemo(() => {
+    const q = search.trim();
+    if (!q) return scoresList;
+    return scoresList.filter((sc) => String(sc.sc_num).includes(q));
+  }, [scoresList, search]);
 
   // Delete Handlers
   const handleDeleteTitle = async (id: number) => {

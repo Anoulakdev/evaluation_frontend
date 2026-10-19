@@ -246,6 +246,11 @@ export function AllTotalScoreView() {
     }
   };
 
+  // Reset page to 1 whenever any filter or search query changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch, pageSize]);
+
   useEffect(() => {
     fetchAllScores();
   }, [page, pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
@@ -654,6 +659,7 @@ export function AllTotalScoreView() {
               <option value="6">Role 6: ຄະນະພະແນກ/ສູນ/ສາຂາ</option>
               <option value="7">Role 7: ຄະນະຫ້ອງການ</option>
               <option value="8">Role 8: ຄະນະໜ່ວຍງານ</option>
+              <option value="9">Role 9: ສະມາຊິກ</option>
             </select>
           </div>
         </div>
@@ -664,8 +670,8 @@ export function AllTotalScoreView() {
             <span className="font-bold text-slate-500">ຈັດຮຽງຕາມ:</span>
             <div className="flex flex-wrap gap-1.5">
               {[
-                { id: "ROLE_ASC", label: "ບົດບາດ (3 &rarr; 8)" },
-                { id: "ROLE_DESC", label: "ບົດບາດ (8 &rarr; 3)" },
+                { id: "ROLE_ASC", label: "ບົດບາດ (3 &rarr; 9)" },
+                { id: "ROLE_DESC", label: "ບົດບາດ (9 &rarr; 3)" },
                 { id: "SCORE_DESC", label: "ຄະແນນສູງ &rarr; ຕ່ຳ" },
                 { id: "SCORE_ASC", label: "ຄະແນນຕ່ຳ &rarr; ສູງ" },
                 { id: "CODE_ASC", label: "ລະຫັດພະນັກງານ" },

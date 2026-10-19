@@ -17,7 +17,13 @@ export function encryptData(value: string | number): string {
  */
 export function decryptData(encryptedValue: string): string {
   try {
-    const decoded = decodeURIComponent(encryptedValue);
+    if (!encryptedValue) return "";
+    let decoded = encryptedValue;
+    try {
+      decoded = decodeURIComponent(encryptedValue);
+    } catch {
+      decoded = encryptedValue;
+    }
     const bytes = CryptoJS.AES.decrypt(decoded, SECRET_KEY);
     const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
     return decryptedText;

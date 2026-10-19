@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ShieldCheck,
+  UserCheck,
+  ClipboardList,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useEvaluationStore } from "@/store/useEvaluationStore";
@@ -33,23 +35,13 @@ export function Navbar() {
     }
   }, []);
 
-  const navItems =
-    user?.roleId === 1
-      ? [
+  const navItems = (() => {
+    if (user?.roleId === 1) {
+      return [
         {
           laoName: "ຈັດການຜູ້ໃຊ້",
           href: "/users",
           icon: Users,
-        },
-        {
-          laoName: "ຜົນການປະເມີນລວມ",
-          href: "/alltotalscore",
-          icon: Award,
-        },
-        {
-          laoName: "ຜົນການປະເມີນບຸກຄົນ",
-          href: "/totalscore",
-          icon: Award,
         },
         {
           laoName: "ໂຄງຮ່າງການຈັດຕັ້ງ",
@@ -61,8 +53,50 @@ export function Navbar() {
           href: "/managedata",
           icon: Database,
         },
-      ]
-      : [];
+      ];
+    }
+    if (user?.roleId === 11 || user?.roleId === 13 || user?.roleId === 14) {
+      return [
+        {
+          laoName: "ຈັດການຜູ້ໃຊ້",
+          href: "/users",
+          icon: Users,
+        },
+      ];
+    }
+    if (user?.roleId === 12) {
+      return [
+        {
+          laoName: "ຜົນການປະເມີນລວມ",
+          href: "/alltotalscore",
+          icon: Award,
+        },
+        {
+          laoName: "ຜົນການປະເມີນບຸກຄົນ",
+          href: "/totalscore",
+          icon: Award,
+        },
+      ];
+    }
+    if (
+      user?.roleId &&
+      [2, 3, 4, 5, 6, 7, 8, 9].includes(user.roleId)
+    ) {
+      return [
+        {
+          laoName: "ປະເມີນຜົນ",
+          href: "/evaluaterole",
+          icon: UserCheck,
+        },
+        {
+          laoName: "ລາຍການປະເມີນ",
+          href: "/evaluatelist",
+          icon: ClipboardList,
+        },
+      ];
+    }
+    return [];
+  })();
 
   const handleLogout = async () => {
     try {
@@ -94,7 +128,13 @@ export function Navbar() {
           {/* Logo Brand */}
           <div className="flex items-center space-x-3">
             <Link
-              href={user?.roleId === 1 ? "/users" : "/evaluaterole"}
+              href={
+                user?.roleId === 1 || user?.roleId === 11 || user?.roleId === 13 || user?.roleId === 14
+                  ? "/users"
+                  : user?.roleId === 12
+                    ? "/alltotalscore"
+                    : "/evaluaterole"
+              }
               className="flex items-center space-x-2.5 group"
             >
               <Image
@@ -184,11 +224,20 @@ export function Navbar() {
                     </p>
                     <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-700 font-medium">
                       <ShieldCheck className="w-3 h-3" />
-                      {user?.roleId === 1
-                        ? "ຜູ້ດູແລລະບົບສູງສຸດ"
-                        : user?.roleId === 2
-                          ? "ຜູ້ອຳນວຍການໃຫຍ່"
-                          : "ຜູ້ໃຊ້ງານລະບົບ"}
+                      {user?.role?.name ||
+                        (user?.roleId === 1
+                          ? "ຜູ້ດູແລລະບົບ"
+                          : user?.roleId === 11
+                            ? "SuperAdmin"
+                            : user?.roleId === 12
+                              ? "Boss"
+                              : user?.roleId === 13
+                                ? "AdminDepartment"
+                                : user?.roleId === 14
+                                  ? "AdminBranch"
+                                  : user?.roleId === 2
+                                    ? "ຜູ້ອຳນວຍການໃຫຍ່"
+                                    : "ຜູ້ໃຊ້ງານລະບົບ")}
                     </span>
                   </div>
 
@@ -226,12 +275,16 @@ export function Navbar() {
         <div className="md:hidden border-t border-slate-200 bg-white/95 px-4 pt-3 pb-6 space-y-2">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = pathname === item.href;
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 hover:bg-sky-50 hover:text-sky-600"
+                className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${isActive
+                  ? "bg-sky-50 text-sky-700 font-semibold"
+                  : "text-slate-700 hover:bg-sky-50 hover:text-sky-600"
+                  }`}
               >
                 <Icon className="w-5 h-5 text-sky-600" />
                 <div>
