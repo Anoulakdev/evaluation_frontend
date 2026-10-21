@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,7 +11,6 @@ import {
 import {
   Users,
   Search,
-  Filter,
   RefreshCw,
   Plus,
   ShieldCheck,
@@ -370,8 +369,11 @@ export function UserList() {
     }
   }, [officeFilter]);
 
+  const activeRequestIdRef = useRef(0);
+
   // Fetch users directly from Backend API (findAllUser: /users) with pagination
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (targetPageIndex: number = pageIndex) => {
+    const requestId = ++activeRequestIdRef.current;
     setLoading(true);
     setAuthError(false);
     try {
@@ -386,7 +388,7 @@ export function UserList() {
 
       const response = await axiosInstance.get("/users", {
         params: {
-          page: pageIndex + 1,
+          page: targetPageIndex + 1,
           limit: pageSize,
           search: debouncedSearch || undefined,
           roleId: roleFilter !== "ALL" ? roleFilter : undefined,
@@ -397,6 +399,9 @@ export function UserList() {
           posId: posFilter || undefined,
         },
       });
+
+      // Ignore response if a newer request was dispatched
+      if (requestId !== activeRequestIdRef.current) return;
 
       if (response.data && typeof response.data === "object" && "data" in response.data) {
         // Paginated Response object
@@ -414,20 +419,34 @@ export function UserList() {
         setTotalPages(1);
       }
     } catch (err: unknown) {
+      if (requestId !== activeRequestIdRef.current) return;
       console.warn("Failed to fetch users from backend /users:", err);
       setUsers([]);
       if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
         setAuthError(true);
       }
     } finally {
-      setLoading(false);
+      if (requestId === activeRequestIdRef.current) {
+        setLoading(false);
+      }
     }
-  };
-
-  // Reset pageIndex to 0 whenever any filter or search query changes
-  useEffect(() => {
-    setPagination((prev) => (prev.pageIndex !== 0 ? { ...prev, pageIndex: 0 } : prev));
   }, [
+    pageIndex,
+    pageSize,
+    debouncedSearch,
+    roleFilter,
+    isRole13,
+    isRole14,
+    currentUser?.departmentId,
+    currentUser?.divisionId,
+    deptFilter,
+    divisionFilter,
+    officeFilter,
+    unitFilter,
+    posFilter,
+  ]);
+
+  const prevFiltersRef = useRef({
     roleFilter,
     debouncedSearch,
     deptFilter,
@@ -436,10 +455,38 @@ export function UserList() {
     unitFilter,
     posFilter,
     pageSize,
-  ]);
+  });
 
+  // Single effect: reset pageIndex to 0 if filters changed, and fetch users without double requests
   useEffect(() => {
-    fetchUsers();
+    const prev = prevFiltersRef.current;
+    const filterChanged =
+      prev.roleFilter !== roleFilter ||
+      prev.debouncedSearch !== debouncedSearch ||
+      prev.deptFilter !== deptFilter ||
+      prev.divisionFilter !== divisionFilter ||
+      prev.officeFilter !== officeFilter ||
+      prev.unitFilter !== unitFilter ||
+      prev.posFilter !== posFilter ||
+      prev.pageSize !== pageSize;
+
+    prevFiltersRef.current = {
+      roleFilter,
+      debouncedSearch,
+      deptFilter,
+      divisionFilter,
+      officeFilter,
+      unitFilter,
+      posFilter,
+      pageSize,
+    };
+
+    if (filterChanged && pageIndex !== 0) {
+      setPagination((prevP) => ({ ...prevP, pageIndex: 0 }));
+      return;
+    }
+
+    fetchUsers(pageIndex);
   }, [
     pageIndex,
     pageSize,
@@ -450,8 +497,7 @@ export function UserList() {
     officeFilter,
     unitFilter,
     posFilter,
-    currentUser?.departmentId,
-    currentUser?.divisionId,
+    fetchUsers,
   ]);
 
   // Search Trigger Reset Page Index
@@ -609,6 +655,24 @@ export function UserList() {
           const u = info.row.original;
           const name = u.position?.pos_name || u.position?.posnameId || (u.posId ? `Pos #${u.posId}` : "-");
           return <span className="font-medium text-slate-700">{name}</span>;
+        },
+      }),
+
+      columnHelper.accessor("rank", {
+        header: () => <div className="text-center">ລຳດັບ</div>,
+        cell: (info) => {
+          const u = info.row.original;
+          return (
+            <div className="text-center">
+              {u.rank !== null && u.rank !== undefined ? (
+                <span className="inline-flex items-center justify-center min-w-6 px-2 py-0.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
+                  {u.rank}
+                </span>
+              ) : (
+                <span className="text-slate-400 font-medium">-</span>
+              )}
+            </div>
+          );
         },
       }),
 
@@ -950,7 +1014,7 @@ export function UserList() {
               ))}
             </select>
 
-            <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading} className="h-9 text-xs shrink-0">
+            <Button variant="outline" size="sm" onClick={() => fetchUsers(pageIndex)} disabled={loading} className="h-9 text-xs shrink-0">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
               <span>ໂຫຼດໃໝ່</span>
             </Button>

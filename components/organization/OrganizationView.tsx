@@ -328,7 +328,7 @@ export function OrganizationView() {
     if (!catMeta) return;
 
     try {
-      let baseUrl = catMeta.endpoint;
+      const baseUrl = catMeta.endpoint;
       const params: string[] = [];
 
       if (debouncedSearch.trim()) {

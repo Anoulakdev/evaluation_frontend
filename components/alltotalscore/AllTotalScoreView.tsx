@@ -1,14 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
-  Award,
   Search,
-  Users,
   RefreshCw,
   AlertCircle,
-  Sparkles,
   Layers,
   Info,
   FileSpreadsheet,
@@ -204,13 +201,13 @@ export function AllTotalScoreView() {
   }, [selectedDeptId]);
 
   // Fetch All Total Scores (Paginated from Server)
-  const fetchAllScores = async () => {
+  const fetchAllScores = useCallback(async (targetPage: number = page) => {
     try {
       setLoading(true);
       setError(null);
 
       const params: Record<string, string | number> = {
-        page,
+        page: targetPage,
         limit: pageSize,
       };
       if (selectedDeptId) params.departmentId = Number(selectedDeptId);
@@ -222,8 +219,8 @@ export function AllTotalScoreView() {
         params,
       });
 
-      const resData = res.data as any;
-      if (resData && Array.isArray(resData.data)) {
+      const resData = res.data as { data?: ReceiverScoreItem[]; total?: number } | ReceiverScoreItem[];
+      if (resData && typeof resData === "object" && "data" in resData && Array.isArray(resData.data)) {
         setResults(resData.data);
         setTotalCount(resData.total ?? resData.data.length);
       } else if (Array.isArray(resData)) {
@@ -233,10 +230,11 @@ export function AllTotalScoreView() {
         setResults([]);
         setTotalCount(0);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch all total scores:", err);
+      const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(
-        err?.response?.data?.message ||
+        axiosErr?.response?.data?.message ||
         "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ"
       );
       setResults([]);
@@ -244,16 +242,41 @@ export function AllTotalScoreView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
 
-  // Reset page to 1 whenever any filter or search query changes
-  useEffect(() => {
-    setPage(1);
-  }, [selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch, pageSize]);
+  const prevFiltersRef = useRef({
+    selectedDeptId,
+    selectedDivisionId,
+    roleFilter,
+    debouncedSearch,
+    pageSize,
+  });
 
+  // Single effect that handles both filter changes (resetting page to 1) and page changes without double fetching
   useEffect(() => {
-    fetchAllScores();
-  }, [page, pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
+    const prev = prevFiltersRef.current;
+    const filterChanged =
+      prev.selectedDeptId !== selectedDeptId ||
+      prev.selectedDivisionId !== selectedDivisionId ||
+      prev.roleFilter !== roleFilter ||
+      prev.debouncedSearch !== debouncedSearch ||
+      prev.pageSize !== pageSize;
+
+    prevFiltersRef.current = {
+      selectedDeptId,
+      selectedDivisionId,
+      roleFilter,
+      debouncedSearch,
+      pageSize,
+    };
+
+    if (filterChanged && page !== 1) {
+      setPage(1);
+      return;
+    }
+
+    fetchAllScores(page);
+  }, [page, pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch, fetchAllScores]);
 
   // Department / Division lookup maps
   const deptMap = useMemo(() => {
@@ -270,7 +293,7 @@ export function AllTotalScoreView() {
 
   // Sorted Data for Current Page
   const paginatedData = useMemo(() => {
-    let list = [...results];
+    const list = [...results];
 
     // Sorting within current page
     list.sort((a, b) => {
@@ -515,7 +538,7 @@ export function AllTotalScoreView() {
           {/* Quick Action Toolbar */}
           <div className="flex flex-wrap items-center gap-2.5 print:hidden">
             <button
-              onClick={fetchAllScores}
+              onClick={() => fetchAllScores(page)}
               disabled={loading}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
               title="ໂຫຼດຂໍ້ມູນຄືນໃໝ່"
@@ -707,7 +730,7 @@ export function AllTotalScoreView() {
           <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
           <p className="font-bold text-sm">{error}</p>
           <button
-            onClick={fetchAllScores}
+            onClick={() => fetchAllScores(page)}
             className="px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold shadow-sm hover:bg-rose-500 cursor-pointer"
           >
             ລອງໃໝ່ອີກຄັ້ງ

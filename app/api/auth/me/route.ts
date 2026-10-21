@@ -27,7 +27,7 @@ export async function GET() {
       success: true,
       user: response.data,
     });
-  } catch (err: unknown) {
+  } catch {
     return NextResponse.json(
       { success: false, message: "Unauthorized" },
       { status: 401 }

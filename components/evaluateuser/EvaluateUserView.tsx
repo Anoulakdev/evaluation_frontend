@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ArrowRight,
   ShieldAlert,
+  Briefcase,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { axiosInstance } from "@/lib/axiosInstance";
@@ -22,6 +23,10 @@ export interface EvaluateUserItem {
   emp_code: string | null;
   empimg?: string | null;
   isEvaluated?: boolean;
+  position?: {
+    id: number;
+    pos_name: string;
+  } | null;
 }
 
 export function EvaluateUserView() {
@@ -55,7 +60,7 @@ export function EvaluateUserView() {
   }, [searchParams]);
 
   // Fetch users from API /users/getuser?roleId=... and check evaluation status
-  const fetchUsersToEvaluate = async () => {
+  const fetchUsersToEvaluate = useCallback(async () => {
     if (!decryptedRoleId) return;
     try {
       setLoading(true);
@@ -71,16 +76,17 @@ export function EvaluateUserView() {
         statusMap[item.id] = !!item.isEvaluated;
       });
       setEvaluatedMap(statusMap);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch users to evaluate:", err);
+      const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(
-        err?.response?.data?.message ||
+        axiosErr?.response?.data?.message ||
         "ບໍ່ສາມາດໂຫຼດຂໍ້ມູນພະນັກງານໄດ້ ກະລຸນາລອງໃໝ່"
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [decryptedRoleId]);
 
   useEffect(() => {
     if (decryptedRoleId) {
@@ -96,7 +102,7 @@ export function EvaluateUserView() {
         })
         .catch(() => { });
     }
-  }, [decryptedRoleId]);
+  }, [decryptedRoleId, fetchUsersToEvaluate]);
 
   const handleStartEvaluation = (targetUser: EvaluateUserItem) => {
     if (evaluatedMap[targetUser.id]) return;
@@ -235,9 +241,9 @@ export function EvaluateUserView() {
                         {initials}
                       </div>
                     )}
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 min-w-0 flex-1">
                       <h3
-                        className={`text-sm font-bold leading-tight ${
+                        className={`text-sm font-bold leading-tight truncate ${
                           isEvaluated ? "text-slate-700" : "text-slate-800 group-hover:text-orange-600 transition-colors"
                         }`}
                       >
@@ -250,6 +256,12 @@ export function EvaluateUserView() {
                       >
                         {targetUser.emp_code || `EMP-${targetUser.id}`}
                       </p>
+                      {targetUser.position?.pos_name && (
+                        <p className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5 pt-0.5">
+                          <Briefcase className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{targetUser.position.pos_name}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

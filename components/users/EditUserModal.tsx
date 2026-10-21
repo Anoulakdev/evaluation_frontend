@@ -46,6 +46,7 @@ export function EditUserModal({
   const [officeId, setOfficeId] = useState<string>("");
   const [unitId, setUnitId] = useState<string>("");
   const [posId, setPosId] = useState<string>("");
+  const [rank, setRank] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -57,6 +58,8 @@ export function EditUserModal({
       const initOff = user.officeId ? String(user.officeId) : "";
       const initUnit = user.unitId ? String(user.unitId) : "";
       const initPos = user.posId ? String(user.posId) : "";
+      const initRank =
+        user.rank !== undefined && user.rank !== null ? String(user.rank) : "";
 
       setRoleId(user.roleId || 8);
       setDepartmentId(initDept);
@@ -64,6 +67,7 @@ export function EditUserModal({
       setOfficeId(initOff);
       setUnitId(initUnit);
       setPosId(initPos);
+      setRank(initRank);
       setErrorMsg("");
 
       // 1. Fetch Roles if not provided
@@ -272,6 +276,7 @@ export function EditUserModal({
       officeId: officeId ? Number(officeId) : null,
       unitId: unitId ? Number(unitId) : null,
       posId: posId ? Number(posId) : undefined,
+      rank: rank !== "" && !isNaN(Number(rank)) ? Number(rank) : null,
     };
 
     const validation = updateUserSchema.safeParse(payload);
@@ -455,23 +460,41 @@ export function EditUserModal({
               </div>
             </div>
 
-            {/* Position Select */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-600">
-                Position (ຕຳແໜ່ງ)
-              </label>
-              <select
-                value={posId}
-                onChange={(e) => setPosId(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none font-medium text-slate-800"
-              >
-                <option value="">-- ເລືອກຕຳແໜ່ງ (Position) --</option>
-                {positions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.pos_name || p.posnameId || `Position #${p.id}`}
-                  </option>
-                ))}
-              </select>
+            {/* Position & Rank */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Position Select */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">
+                  Position (ຕຳແໜ່ງ)
+                </label>
+                <select
+                  value={posId}
+                  onChange={(e) => setPosId(e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none font-medium text-slate-800"
+                >
+                  <option value="">-- ເລືອກຕຳແໜ່ງ (Position) --</option>
+                  {positions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.pos_name || p.posnameId || `Position #${p.id}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rank Input */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600">
+                  Rank (ລຳດັບ)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="ປ້ອນລຳດັບ (Rank)"
+                  value={rank}
+                  onChange={(e) => setRank(e.target.value)}
+                  className="w-full px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none font-medium text-slate-800 placeholder:text-slate-400"
+                />
+              </div>
             </div>
           </div>
 

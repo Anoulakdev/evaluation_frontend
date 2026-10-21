@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { ShieldAlert, ArrowLeft, LogIn, Home, Lock } from "lucide-react";
+import { ShieldAlert, Home, Lock } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export function UnauthorizedView() {

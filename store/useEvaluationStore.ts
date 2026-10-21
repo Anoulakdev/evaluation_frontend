@@ -15,7 +15,7 @@ export interface EvaluationState {
   resetEvaluation: () => void;
 }
 
-export const useEvaluationStore = create<EvaluationState>((set, get) => ({
+export const useEvaluationStore = create<EvaluationState>((set) => ({
   currentStep: 1,
   receiverId: null,
   roleId: null,

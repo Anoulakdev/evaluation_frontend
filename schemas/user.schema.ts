@@ -8,11 +8,13 @@ export const createUserSchema = z.object({
   officeId: z.number().optional(),
   unitId: z.number().optional(),
   posId: z.number().optional(),
+  rank: z.number().optional().nullable(),
 });
 
 export const updateUserSchema = z.object({
   roleId: z.number().int().min(1).optional(),
   posId: z.number().optional().nullable(),
+  rank: z.number().optional().nullable(),
   departmentId: z.number().optional().nullable(),
   divisionId: z.number().optional().nullable(),
   officeId: z.number().optional().nullable(),
@@ -47,6 +49,7 @@ export const userItemSchema = z.object({
   tel: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
   empimg: z.string().nullable().optional(),
+  rank: z.number().nullable().optional(),
   departmentId: z.number().nullable().optional(),
   divisionId: z.number().nullable().optional(),
   officeId: z.number().nullable().optional(),

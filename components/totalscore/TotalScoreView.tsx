@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Award,
   Search,
   Users,
-  Printer,
   ChevronDown,
   ChevronUp,
   RefreshCw,
@@ -137,15 +136,8 @@ export function TotalScoreView() {
   // Accordion toggle state for itemized detail
   const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
-    if (initialEmpCode) {
-      setEmpCodeInput(initialEmpCode);
-      fetchResultDetail(initialEmpCode);
-    }
-  }, [initialEmpCode]);
-
   // Fetch result detail by emp_code
-  const fetchResultDetail = async (emp_code: string) => {
+  const fetchResultDetail = useCallback(async (emp_code: string) => {
     const trimmedCode = emp_code.trim();
     if (!trimmedCode) return;
 
@@ -195,19 +187,27 @@ export function TotalScoreView() {
           // ignore fallback
         }
       }
-    } catch (err: any) {
-      if (err?.response?.status === 404) {
-        setError(err?.response?.data?.message || "ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນສຳລັບພະນັກງານນີ້");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 404) {
+        setError(axiosErr?.response?.data?.message || "ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນສຳລັບພະນັກງານນີ້");
       } else {
         console.error("Failed to fetch result detail:", err);
-        setError(err?.response?.data?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນ");
+        setError(axiosErr?.response?.data?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນ");
       }
       setGroupedResult(null);
       setSelectedUser(null);
     } finally {
       setLoadingResult(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initialEmpCode) {
+      setEmpCodeInput(initialEmpCode);
+      fetchResultDetail(initialEmpCode);
+    }
+  }, [initialEmpCode, fetchResultDetail]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -818,7 +818,7 @@ export function TotalScoreView() {
             ກະລຸນາເລືອກ ພະນັກງານ ເພື່ອເບິ່ງຜົນການປະເມີນ 360
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            ພິມຄົ້ນຫາ ລະຫັດພະນັກງານ ຈາກຊ່ອງຄົ້ນຫາດ້ານເທິງ ແລ້ວກົດປຸ່ມ "ຄົ້ນຫາ" ເພື່ອສະແດງຜົນການປະເມີນ ແລະ ສຫຼຸບຄະແນນແຍກຕາມບົດບາດຜູ້ປະເມີນ
+            ພິມຄົ້ນຫາ ລະຫັດພະນັກງານ ຈາກຊ່ອງຄົ້ນຫາດ້ານເທິງ ແລ້ວກົດປຸ່ມ &quot;ຄົ້ນຫາ&quot; ເພື່ອສະແດງຜົນການປະເມີນ ແລະ ສຫຼຸບຄະແນນແຍກຕາມບົດບາດຜູ້ປະເມີນ
           </p>
         </div>
       )}

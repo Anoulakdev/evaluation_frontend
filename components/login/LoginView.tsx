@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Zap,
   Lock,
   User,
   Eye,
@@ -13,8 +12,6 @@ import {
   ShieldAlert,
   Award,
   Users,
-  LockKeyhole,
-  CheckCircle2,
   KeyRound,
 } from "lucide-react";
 import axios from "axios";
@@ -23,7 +20,7 @@ import { toast } from "react-toastify";
 import { axiosInstance } from "@/lib/axiosInstance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, UserProfile } from "@/store/useAuthStore";
 import { loginSchema } from "@/schemas/login.schema";
 
 export function LoginView() {
@@ -38,7 +35,7 @@ export function LoginView() {
 
   // Force Change Password Modal States (for default password login)
   const [showForceChangeModal, setShowForceChangeModal] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState<any>(null);
+  const [loggedInUser, setLoggedInUser] = useState<UserProfile | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);

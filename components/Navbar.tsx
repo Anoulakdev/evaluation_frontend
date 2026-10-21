@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -26,6 +26,7 @@ export function Navbar() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const { user, fetchUser, logout } = useAuthStore();
 
@@ -33,9 +34,24 @@ export function Navbar() {
     if (!user) {
       fetchUser();
     }
-  }, []);
+  }, [user, fetchUser]);
 
-  const navItems = (() => {
+  // Click-outside listener to close profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    if (isProfileOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileOpen]);
+
+  const navItems = useMemo(() => {
     if (user?.roleId === 1) {
       return [
         {
@@ -96,7 +112,7 @@ export function Navbar() {
       ];
     }
     return [];
-  })();
+  }, [user?.roleId]);
 
   const handleLogout = async () => {
     try {
@@ -185,7 +201,7 @@ export function Navbar() {
           {/* Right Actions (Profile) */}
           <div className="hidden sm:flex items-center space-x-3">
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"

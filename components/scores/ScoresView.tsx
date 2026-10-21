@@ -12,8 +12,6 @@ import {
   AlertCircle,
   UserCheck,
   Check,
-  ShieldCheck,
-  Building,
   RefreshCw,
   Edit3,
 } from "lucide-react";
@@ -157,9 +155,11 @@ export function ScoresView() {
       const decRoleId = Number(decRoleIdStr);
 
       if (!isNaN(decEvalId) && !isNaN(decRoleId)) {
-        setEvalId(decEvalId);
-        setRoleId(decRoleId);
-        initEvaluation(decEvalId, decRoleId);
+        if (evalId !== decEvalId || roleId !== decRoleId) {
+          setEvalId(decEvalId);
+          setRoleId(decRoleId);
+          initEvaluation(decEvalId, decRoleId);
+        }
       } else {
         setError("ຂໍ້ມູນລະຫັດປະເມີນບໍ່ຖືກຕ້ອງ");
         setLoading(false);
@@ -168,7 +168,7 @@ export function ScoresView() {
       setError("ບໍ່ພົບຂໍ້ມູນການປະເມີນ");
       setLoading(false);
     }
-  }, [searchParams]);
+  }, [searchParams, evalId, roleId, initEvaluation]);
 
   // Fetch receiver info
   useEffect(() => {

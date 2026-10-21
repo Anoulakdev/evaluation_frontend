@@ -21,7 +21,6 @@ import {
 import { axiosInstance, isAxiosError } from "@/lib/axiosInstance";
 import { useAuthStore } from "@/store/useAuthStore";
 import { toast } from "react-toastify";
-import * as XLSX from "xlsx";
 import {
   EvaluationDetailModal,
   EvaluationItem,
@@ -211,9 +210,10 @@ export function EvaluationListView() {
   };
 
   // Export to Excel
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       setExportingExcel(true);
+      const XLSX = await import("xlsx");
       const dataToExport = filteredList.map((item, index) => ({
         ລຳດັບ: index + 1,
         ລະຫັດພະນັກງານ: item.receiver?.emp_code || "",
