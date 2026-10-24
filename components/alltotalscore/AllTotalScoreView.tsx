@@ -81,6 +81,7 @@ const roleMap: Record<number, string> = {
   8: 'ຄະນະໜ່ວຍງານ',
   9: 'ວິຊາການ',
   10: 'ປະເມີນຕົນເອງ',
+  15: 'ຮອງ ຜອ IPP',
 };
 
 export const getRoleName = (roleId?: number | null): string => {
@@ -146,7 +147,6 @@ export function AllTotalScoreView() {
   }, [search]);
 
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
-  const [sortBy, setSortBy] = useState<string>("ROLE_ASC");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // Pagination
@@ -176,32 +176,43 @@ export function AllTotalScoreView() {
       .catch((err) => console.warn("Failed to fetch departments:", err));
   }, []);
 
-  // Fetch Divisions when Department changes
+  // Fetch Divisions when Department changes with race-condition guard
   useEffect(() => {
-    setSelectedDivisionId("");
-    setDivisionList([]);
-    if (selectedDeptId) {
-      axiosInstance
-        .get(`/divisions/selectdivision?departmentId=${selectedDeptId}`)
-        .then((res) => {
-          const list = Array.isArray(res.data)
-            ? res.data
-            : Array.isArray(res.data?.data)
-              ? res.data.data
-              : [];
-          setDivisionList(
-            list.map((d: any) => ({
-              id: Number(d.id),
-              name: String(d.division_name || `Division #${d.id}`),
-            }))
-          );
-        })
-        .catch((err) => console.warn("Failed to fetch divisions:", err));
+    if (!selectedDeptId) {
+      setDivisionList([]);
+      return;
     }
+    let isCurrent = true;
+    axiosInstance
+      .get(`/divisions/selectdivision?departmentId=${selectedDeptId}`)
+      .then((res) => {
+        if (!isCurrent) return;
+        const list = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+            ? res.data.data
+            : [];
+        setDivisionList(
+          list.map((d: any) => ({
+            id: Number(d.id),
+            name: String(d.division_name || `Division #${d.id}`),
+          }))
+        );
+      })
+      .catch((err) => {
+        if (isCurrent) console.warn("Failed to fetch divisions:", err);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [selectedDeptId]);
 
-  // Fetch All Total Scores (Paginated from Server)
+  const activeRequestIdRef = useRef(0);
+
+  // Fetch All Total Scores (Paginated from Server with Race Condition Protection)
   const fetchAllScores = useCallback(async (targetPage: number = page) => {
+    const requestId = ++activeRequestIdRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -219,6 +230,8 @@ export function AllTotalScoreView() {
         params,
       });
 
+      if (requestId !== activeRequestIdRef.current) return;
+
       const resData = res.data as { data?: ReceiverScoreItem[]; total?: number } | ReceiverScoreItem[];
       if (resData && typeof resData === "object" && "data" in resData && Array.isArray(resData.data)) {
         setResults(resData.data);
@@ -231,6 +244,7 @@ export function AllTotalScoreView() {
         setTotalCount(0);
       }
     } catch (err: unknown) {
+      if (requestId !== activeRequestIdRef.current) return;
       console.error("Failed to fetch all total scores:", err);
       const axiosErr = err as { response?: { data?: { message?: string } } };
       setError(
@@ -240,7 +254,9 @@ export function AllTotalScoreView() {
       setResults([]);
       setTotalCount(0);
     } finally {
-      setLoading(false);
+      if (requestId === activeRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
 
@@ -291,48 +307,20 @@ export function AllTotalScoreView() {
     return map;
   }, [divisionList]);
 
-  // Sorted Data for Current Page
-  const paginatedData = useMemo(() => {
-    const list = [...results];
-
-    // Sorting within current page
-    list.sort((a, b) => {
-      if (sortBy === "SCORE_DESC") {
-        return (b.finalTotal || 0) - (a.finalTotal || 0);
-      }
-      if (sortBy === "SCORE_ASC") {
-        return (a.finalTotal || 0) - (b.finalTotal || 0);
-      }
-      if (sortBy === "ROLE_ASC") {
-        return (a.roleId || 0) - (b.roleId || 0) || a.receiverId - b.receiverId;
-      }
-      if (sortBy === "ROLE_DESC") {
-        return (b.roleId || 0) - (a.roleId || 0) || a.receiverId - b.receiverId;
-      }
-      if (sortBy === "CODE_ASC") {
-        return (a.emp_code || "").localeCompare(b.emp_code || "");
-      }
-      if (sortBy === "NAME_ASC") {
-        return (a.first_name || "").localeCompare(b.first_name || "");
-      }
-      return 0;
-    });
-
-    return list;
-  }, [results, sortBy]);
+  // Data for Current Page (preserves official backend hierarchy ordering)
+  const paginatedData = results;
 
   // Total pages from server totalCount
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearch("");
     setDebouncedSearch("");
     setSelectedDeptId("");
     setSelectedDivisionId("");
     setRoleFilter("ALL");
-    setSortBy("ROLE_ASC");
     setPage(1);
-  };
+  }, []);
 
   // Fetch all filtered data for full Excel/PDF exports
   const fetchExportData = async (): Promise<ReceiverScoreItem[]> => {
@@ -349,16 +337,6 @@ export function AllTotalScoreView() {
       : Array.isArray(resData)
         ? resData
         : [];
-
-    list.sort((a, b) => {
-      if (sortBy === "SCORE_DESC") return (b.finalTotal || 0) - (a.finalTotal || 0);
-      if (sortBy === "SCORE_ASC") return (a.finalTotal || 0) - (b.finalTotal || 0);
-      if (sortBy === "ROLE_ASC") return (a.roleId || 0) - (b.roleId || 0) || a.receiverId - b.receiverId;
-      if (sortBy === "ROLE_DESC") return (b.roleId || 0) - (a.roleId || 0) || a.receiverId - b.receiverId;
-      if (sortBy === "CODE_ASC") return (a.emp_code || "").localeCompare(b.emp_code || "");
-      if (sortBy === "NAME_ASC") return (a.first_name || "").localeCompare(b.first_name || "");
-      return 0;
-    });
 
     return list;
   };
@@ -631,7 +609,9 @@ export function AllTotalScoreView() {
             <select
               value={selectedDeptId}
               onChange={(e) => {
-                setSelectedDeptId(e.target.value);
+                const newDeptId = e.target.value;
+                setSelectedDeptId(newDeptId);
+                setSelectedDivisionId("");
                 setPage(1);
               }}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer"
@@ -675,44 +655,22 @@ export function AllTotalScoreView() {
               }}
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all cursor-pointer"
             >
-              <option value="ALL">-- ທຸກບົດບາດ (All Roles) --</option>
-              <option value="3">Role 3: ຮອງຜູ້ອຳນວຍການ</option>
-              <option value="4">Role 4: ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
-              <option value="5">Role 5: ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
-              <option value="6">Role 6: ຄະນະພະແນກ/ສູນ/ສາຂາ</option>
-              <option value="7">Role 7: ຄະນະຫ້ອງການ</option>
-              <option value="8">Role 8: ຄະນະໜ່ວຍງານ</option>
-              <option value="9">Role 9: ສະມາຊິກ</option>
+              <option value="ALL">-- ທຸກບົດບາດ --</option>
+              <option value="2">ຜູ້ອຳນວຍການ</option>
+              <option value="3">ຮອງຜູ້ອຳນວຍການ</option>
+              <option value="4">ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
+              <option value="5">ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ</option>
+              <option value="6">ຄະນະພະແນກ/ສູນ/ສາຂາ</option>
+              <option value="7">ຄະນະຫ້ອງການ</option>
+              <option value="8">ຄະນະໜ່ວຍງານ</option>
+              <option value="9">ວິຊາການ</option>
+              <option value="15">ຮອງ ຜອ IPP</option>
             </select>
           </div>
         </div>
 
-        {/* Sort Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-500">ຈັດຮຽງຕາມ:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { id: "ROLE_ASC", label: "ບົດບາດ (3 &rarr; 9)" },
-                { id: "ROLE_DESC", label: "ບົດບາດ (9 &rarr; 3)" },
-                { id: "SCORE_DESC", label: "ຄະແນນສູງ &rarr; ຕ່ຳ" },
-                { id: "SCORE_ASC", label: "ຄະແນນຕ່ຳ &rarr; ສູງ" },
-                { id: "CODE_ASC", label: "ລະຫັດພະນັກງານ" },
-                { id: "NAME_ASC", label: "ຊື່ພະນັກງານ" },
-              ].map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSortBy(s.id)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${sortBy === s.id
-                    ? "bg-sky-100 text-sky-800 border border-sky-300"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60"
-                    }`}
-                  dangerouslySetInnerHTML={{ __html: s.label }}
-                />
-              ))}
-            </div>
-          </div>
-
+        {/* Total Count */}
+        <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs">
           <div className="text-slate-500 font-semibold">
             ພົບເຫັນທັງໝົດ <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
           </div>

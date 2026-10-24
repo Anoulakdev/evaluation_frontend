@@ -96,7 +96,7 @@ export function Navbar() {
     }
     if (
       user?.roleId &&
-      [2, 3, 4, 5, 6, 7, 8, 9].includes(user.roleId)
+      [2, 3, 4, 5, 6, 7, 8, 9, 15].includes(user.roleId)
     ) {
       return [
         {

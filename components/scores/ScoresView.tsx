@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -283,12 +283,20 @@ export function ScoresView() {
   const totalSteps = activeTitles.length || 4;
   const isLastStep = currentStep === totalSteps;
 
-  // Compute all scores from the store for summary and review
-  const allSubtitles = activeTitles.flatMap((t) => t.subtitles);
+  // Compute all scores from the store for summary and review (Memoized)
+  const allSubtitles = useMemo(
+    () => activeTitles.flatMap((t) => t.subtitles),
+    [activeTitles]
+  );
   const totalSubtitlesCount = allSubtitles.length;
-  const answeredCount = allSubtitles.filter(
-    (s) => scores[s.fieldName] && scores[s.fieldName] > 0
-  ).length;
+
+  const answeredCount = useMemo(
+    () =>
+      allSubtitles.filter(
+        (s) => scores[s.fieldName] && scores[s.fieldName] > 0
+      ).length,
+    [allSubtitles, scores]
+  );
 
   const maxScorePerQuestion =
     activeScoreOptions.length > 0
@@ -296,42 +304,53 @@ export function ScoresView() {
       : 10;
 
   const grandMaxScore = totalSubtitlesCount * maxScorePerQuestion;
-  const grandTotalScore = allSubtitles.reduce(
-    (sum, s) => sum + (scores[s.fieldName] || 0),
-    0
+
+  const grandTotalScore = useMemo(
+    () =>
+      allSubtitles.reduce(
+        (sum, s) => sum + (scores[s.fieldName] || 0),
+        0
+      ),
+    [allSubtitles, scores]
   );
-  const grandPercentage =
-    grandMaxScore > 0
-      ? Number(((grandTotalScore / grandMaxScore) * 100).toFixed(2))
-      : 0;
 
-  const titlesBreakdown = activeTitles.map((t, idx) => {
-    const tMax = t.subtitles.length * maxScorePerQuestion;
-    const tTotal = t.subtitles.reduce(
-      (sum, s) => sum + (scores[s.fieldName] || 0),
-      0
-    );
-    const tPercent =
-      tMax > 0 ? Number(((tTotal / tMax) * 100).toFixed(2)) : 0;
-    const tAnswered = t.subtitles.filter(
-      (s) => scores[s.fieldName] && scores[s.fieldName] > 0
-    ).length;
+  const grandPercentage = useMemo(
+    () =>
+      grandMaxScore > 0
+        ? Number(((grandTotalScore / grandMaxScore) * 100).toFixed(2))
+        : 0,
+    [grandTotalScore, grandMaxScore]
+  );
 
-    return {
-      title: t,
-      stepNum: idx + 1,
-      total: tTotal,
-      max: tMax,
-      percent: tPercent,
-      answeredCount: tAnswered,
-      isComplete: tAnswered === t.subtitles.length,
-      items: t.subtitles.map((sub, sIdx) => ({
-        sub,
-        itemNumber: sIdx + 1,
-        score: scores[sub.fieldName] || 0,
-      })),
-    };
-  });
+  const titlesBreakdown = useMemo(() => {
+    return activeTitles.map((t, idx) => {
+      const tMax = t.subtitles.length * maxScorePerQuestion;
+      const tTotal = t.subtitles.reduce(
+        (sum, s) => sum + (scores[s.fieldName] || 0),
+        0
+      );
+      const tPercent =
+        tMax > 0 ? Number(((tTotal / tMax) * 100).toFixed(2)) : 0;
+      const tAnswered = t.subtitles.filter(
+        (s) => scores[s.fieldName] && scores[s.fieldName] > 0
+      ).length;
+
+      return {
+        title: t,
+        stepNum: idx + 1,
+        total: tTotal,
+        max: tMax,
+        percent: tPercent,
+        answeredCount: tAnswered,
+        isComplete: tAnswered === t.subtitles.length,
+        items: t.subtitles.map((sub, sIdx) => ({
+          sub,
+          itemNumber: sIdx + 1,
+          score: scores[sub.fieldName] || 0,
+        })),
+      };
+    });
+  }, [activeTitles, scores, maxScorePerQuestion]);
 
   return (
     <div className="space-y-6 font-sans">

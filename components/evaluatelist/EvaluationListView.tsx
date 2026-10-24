@@ -784,13 +784,12 @@ export function EvaluationListView() {
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isAllApproved
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isAllApproved
                   ? "bg-sky-100 text-sky-600"
                   : !isCompletedEvaluationCount
-                  ? "bg-amber-100 text-amber-600"
-                  : "bg-emerald-100 text-emerald-600"
-              }`}
+                    ? "bg-amber-100 text-amber-600"
+                    : "bg-emerald-100 text-emerald-600"
+                }`}
             >
               {!isCompletedEvaluationCount && !isAllApproved ? (
                 <AlertCircle className="w-5 h-5" />
@@ -854,13 +853,12 @@ export function EvaluationListView() {
               unapprovedCount === 0 ||
               !isCompletedEvaluationCount
             }
-            className={`w-full sm:w-auto px-6 py-2.5 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all ${
-              isAllApproved
+            className={`w-full sm:w-auto px-6 py-2.5 font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all ${isAllApproved
                 ? "bg-sky-500 hover:bg-sky-500 text-white shadow-md shadow-sky-500/20 disabled:opacity-100 cursor-not-allowed"
                 : !isCompletedEvaluationCount
-                ? "bg-slate-200 text-slate-400 border border-slate-300 disabled:opacity-100 cursor-not-allowed shadow-none"
-                : "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            }`}
+                  ? "bg-slate-200 text-slate-400 border border-slate-300 disabled:opacity-100 cursor-not-allowed shadow-none"
+                  : "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              }`}
           >
             {isAllApproved ? (
               <CheckCircle2 className="w-5 h-5" />
@@ -872,8 +870,8 @@ export function EvaluationListView() {
             {isAllApproved
               ? "ຢືນຢັນສຳເລັດ"
               : !isCompletedEvaluationCount
-              ? `ຍັງປະເມີນບໍ່ຄົບ (${countData?.evaluated ?? list.length}/${countData?.total ?? 0})`
-              : `ຢືນຢັນທັງໝົດ (${unapprovedCount})`}
+                ? `ຍັງປະເມີນບໍ່ຄົບ (${countData?.evaluated ?? list.length}/${countData?.total ?? 0})`
+                : `ຢືນຢັນທັງໝົດ (${unapprovedCount})`}
           </Button>
         </div>
       )}

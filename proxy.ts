@@ -4,8 +4,8 @@ import type { NextRequest } from "next/server";
 // Routes permissions by role according to Navbar.tsx
 const ROLE_PERMITTED_ROUTES: { route: string; roles: number[] }[] = [
   { route: "/users", roles: [1, 11, 13, 14] },
-  { route: "/alltotalscore", roles: [1, 12] },
-  { route: "/totalscore", roles: [1, 12] },
+  { route: "/alltotalscore", roles: [12] },
+  { route: "/totalscore", roles: [12] },
   { route: "/organization", roles: [1] },
   { route: "/managedata", roles: [1] },
 ];
