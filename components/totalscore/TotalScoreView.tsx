@@ -91,7 +91,11 @@ export interface RoleGroupSummary {
   count: number;
 }
 
-export type GroupedResultDetail = Record<string, TotalDetailItem[] | { items: TotalDetailItem[]; summary: RoleGroupSummary | null }>;
+export type GroupedResultDetail = Record<
+  string,
+  | TotalDetailItem[]
+  | { items: TotalDetailItem[]; summary: RoleGroupSummary | null }
+>;
 
 const getRoleItems = (val: any): TotalDetailItem[] => {
   if (!val) return [];
@@ -129,12 +133,15 @@ export function TotalScoreView() {
   const [selectedUser, setSelectedUser] = useState<UserSelectItem | null>(null);
 
   // Result Detail Data state
-  const [groupedResult, setGroupedResult] = useState<GroupedResultDetail | null>(null);
+  const [groupedResult, setGroupedResult] =
+    useState<GroupedResultDetail | null>(null);
   const [loadingResult, setLoadingResult] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Accordion toggle state for itemized detail
-  const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>(
+    {},
+  );
 
   // Fetch result detail by emp_code
   const fetchResultDetail = useCallback(async (emp_code: string) => {
@@ -145,9 +152,12 @@ export function TotalScoreView() {
       setLoadingResult(true);
       setError(null);
 
-      const res = await axiosInstance.get<GroupedResultDetail>("/totals/resultdetail", {
-        params: { emp_code: trimmedCode },
-      });
+      const res = await axiosInstance.get<GroupedResultDetail>(
+        "/totals/resultdetail",
+        {
+          params: { emp_code: trimmedCode },
+        },
+      );
 
       const resData = res.data || {};
       setGroupedResult(resData);
@@ -180,20 +190,33 @@ export function TotalScoreView() {
           const userRes = await axiosInstance.get("/users", {
             params: { search: trimmedCode },
           });
-          const list = Array.isArray(userRes.data) ? userRes.data : userRes.data?.data || [];
-          const matched = list.find((u: UserSelectItem) => u.emp_code === trimmedCode) || list[0] || null;
+          const list = Array.isArray(userRes.data)
+            ? userRes.data
+            : userRes.data?.data || [];
+          const matched =
+            list.find((u: UserSelectItem) => u.emp_code === trimmedCode) ||
+            list[0] ||
+            null;
           if (matched) setSelectedUser(matched);
         } catch {
           // ignore fallback
         }
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      const axiosErr = err as {
+        response?: { status?: number; data?: { message?: string } };
+      };
       if (axiosErr?.response?.status === 404) {
-        setError(axiosErr?.response?.data?.message || "ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນສຳລັບພະນັກງານນີ້");
+        setError(
+          axiosErr?.response?.data?.message ||
+            "ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນສຳລັບພະນັກງານນີ້",
+        );
       } else {
         console.error("Failed to fetch result detail:", err);
-        setError(axiosErr?.response?.data?.message || "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນ");
+        setError(
+          axiosErr?.response?.data?.message ||
+            "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນ",
+        );
       }
       setGroupedResult(null);
       setSelectedUser(null);
@@ -228,7 +251,9 @@ export function TotalScoreView() {
     const wb = XLSX.utils.book_new();
     const sheetData: any[] = [];
 
-    sheetData.push([`ຜົນການປະເມີນ 360 - ${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`]);
+    sheetData.push([
+      `ຜົນການປະເມີນ 360 - ${selectedUser.first_name || ""} ${selectedUser.last_name || ""}`,
+    ]);
     sheetData.push([`ລະຫັດພະນັກງານ: ${selectedUser.emp_code || ""}`]);
     sheetData.push([]);
 
@@ -263,7 +288,9 @@ export function TotalScoreView() {
     Object.keys(groupedResult).forEach((roleName) => {
       const items = getRoleItems(groupedResult[roleName]);
       items.forEach((item) => {
-        const giverName = item.giver ? `${item.giver.first_name || ""} ${item.giver.last_name || ""}`.trim() : "ຜູ້ປະເມີນ";
+        const giverName = item.giver
+          ? `${item.giver.first_name || ""} ${item.giver.last_name || ""}`.trim()
+          : "ຜູ້ປະເມີນ";
         const giverCode = item.giver?.emp_code || "";
         sheetData.push([
           roleName,
@@ -301,21 +328,49 @@ export function TotalScoreView() {
 
       if (items.length > 0) {
         const count = items.length;
-        const avgS1 = (items.reduce((s, i) => s + (i.s1_score || 0), 0) / count).toFixed(2);
-        const avgS2 = (items.reduce((s, i) => s + (i.s2_score || 0), 0) / count).toFixed(2);
-        const avgS3 = (items.reduce((s, i) => s + (i.s3_score || 0), 0) / count).toFixed(2);
-        const avgS4 = (items.reduce((s, i) => s + (i.s4_score || 0), 0) / count).toFixed(2);
-        const avgTotal = (items.reduce((s, i) => s + (i.total_score || 0), 0) / count).toFixed(2);
-        const avgPercent = (items.reduce((s, i) => s + (i.percent_score || 0), 0) / count).toFixed(2);
+        const avgS1 = (
+          items.reduce((s, i) => s + (i.s1_score || 0), 0) / count
+        ).toFixed(2);
+        const avgS2 = (
+          items.reduce((s, i) => s + (i.s2_score || 0), 0) / count
+        ).toFixed(2);
+        const avgS3 = (
+          items.reduce((s, i) => s + (i.s3_score || 0), 0) / count
+        ).toFixed(2);
+        const avgS4 = (
+          items.reduce((s, i) => s + (i.s4_score || 0), 0) / count
+        ).toFixed(2);
+        const avgTotal = (
+          items.reduce((s, i) => s + (i.total_score || 0), 0) / count
+        ).toFixed(2);
+        const avgPercent = (
+          items.reduce((s, i) => s + (i.percent_score || 0), 0) / count
+        ).toFixed(2);
 
         sheetData.push([
           `ສະເລ່ຍກຸ່ມ ${roleName}`,
           "-",
           "-",
-          "-", "-", "-", "-", "-", "-", avgS1,
-          "-", "-", "-", "-", "-", avgS2,
-          "-", "-", "-", avgS3,
-          "-", "-", avgS4,
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          avgS1,
+          "-",
+          "-",
+          "-",
+          "-",
+          "-",
+          avgS2,
+          "-",
+          "-",
+          "-",
+          avgS3,
+          "-",
+          "-",
+          avgS4,
           avgTotal,
           `${avgPercent}%`,
         ]);
@@ -374,13 +429,13 @@ export function TotalScoreView() {
           selectedUser={selectedUser}
           groupedResult={groupedResult}
           getRoleItems={getRoleItems}
-        />
+        />,
       ).toBlob();
 
       const url = URL.createObjectURL(docBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Evaluation_Result_${selectedUser.emp_code || selectedUser.id}_${Date.now()}.pdf`;
+      link.download = `Evaluation_Result_${selectedUser.emp_code}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -418,7 +473,10 @@ export function TotalScoreView() {
           </div>
 
           {/* User Search Input Form */}
-          <form onSubmit={handleSearchSubmit} className="w-full md:w-96 space-y-1.5">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="w-full md:w-96 space-y-1.5"
+          >
             <label className="block text-xs font-bold text-sky-200">
               ຄົ້ນຫາ ພະນັກງານ:
             </label>
@@ -465,7 +523,10 @@ export function TotalScoreView() {
           </p>
         </div>
       ) : groupedResult && selectedUser ? (
-        <div id="evaluation-report-content" className="space-y-4 bg-slate-50 p-2 sm:p-4 rounded-3xl">
+        <div
+          id="evaluation-report-content"
+          className="space-y-4 bg-slate-50 p-2 sm:p-4 rounded-3xl"
+        >
           {/* Selected Employee Info Header Card */}
           <div className="p-5 sm:p-6 rounded-3xl bg-white border border-slate-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6 print:border-none print:shadow-none print:p-0">
             <div className="flex items-center gap-5">
@@ -507,91 +568,107 @@ export function TotalScoreView() {
 
             {/* Export Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5 shrink-0 print:hidden">
-              <button
+              {/* <button
                 type="button"
                 onClick={handleExportExcel}
                 className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 <span>Excel</span>
-              </button>
+              </button> */}
               <button
                 type="button"
                 onClick={handleExportPDF}
                 disabled={exportingPDF}
                 className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                <FileText className={`w-4 h-4 ${exportingPDF ? "animate-spin" : ""}`} />
+                <FileText
+                  className={`w-4 h-4 ${exportingPDF ? "animate-spin" : ""}`}
+                />
                 <span>{exportingPDF ? "ກຳລັງສ້າງ PDF..." : "PDF"}</span>
               </button>
             </div>
           </div>
 
           {/* 360 Degree Weighted Score Summary Card */}
-          {groupedResult && (groupedResult as any)._weightedCalculation && (() => {
-            const wc = (groupedResult as any)._weightedCalculation;
-            const groups = [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean);
+          {groupedResult &&
+            (groupedResult as any)._weightedCalculation &&
+            (() => {
+              const wc = (groupedResult as any)._weightedCalculation;
+              const groups = [
+                wc.groupA,
+                wc.groupB,
+                wc.groupC,
+                wc.groupD,
+                wc.groupE,
+              ].filter(Boolean);
 
-            return (
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-sky-500/10 to-indigo-500/10 border border-amber-300/80 shadow-md space-y-4 print:border-none print:shadow-none print:p-0">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-200/80 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-sm shrink-0">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                        ຜົນຄິດໄລ່ຄະແນນລວມ
-                      </h3>
-                      <p className="text-xs font-bold text-slate-500">
-                        ຄິດໄລ່ຕາມສັດສ່ວນນ້ຳໜັກເປີເຊັນຂອງແຕ່ລະກຸ່ມບົດບາດ
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/90 px-5 py-2.5 rounded-2xl border border-amber-300 shadow-sm flex items-center gap-2.5">
-                    <span className="text-xs font-bold text-slate-600">ຄະແນນສຸດທິ (100%):</span>
-                    <span className="text-xl sm:text-2xl font-black text-amber-600 font-mono">
-                      {wc.final_weighted_total}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Breakdown Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {groups.map((g: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="bg-white/90 p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:border-amber-300 transition-all"
-                    >
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-black text-sky-800 bg-sky-100 px-2 py-0.5 rounded-lg inline-block border border-sky-200">
-                          ສັດສ່ວນ {g.weight_percent}%
-                        </span>
-                        <p className="text-xs font-extrabold text-slate-800 line-clamp-2">
-                          {g.label}
+              return (
+                <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-sky-500/10 to-indigo-500/10 border border-amber-300/80 shadow-md space-y-4 print:border-none print:shadow-none print:p-0">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-200/80 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-sm shrink-0">
+                        <Sparkles className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                          ຜົນຄິດໄລ່ຄະແນນລວມ
+                        </h3>
+                        <p className="text-xs font-bold text-slate-500">
+                          ຄິດໄລ່ຕາມສັດສ່ວນນ້ຳໜັກເປີເຊັນຂອງແຕ່ລະກຸ່ມບົດບາດ
                         </p>
                       </div>
-
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-bold text-[11px]">ສະເລ່ຍ: {g.avg_score}%</span>
-                        <span className="font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg text-xs font-mono">
-                          +{g.weighted_score}%
-                        </span>
-                      </div>
                     </div>
-                  ))}
+
+                    <div className="bg-white/90 px-5 py-2.5 rounded-2xl border border-amber-300 shadow-sm flex items-center gap-2.5">
+                      <span className="text-xs font-bold text-slate-600">
+                        ຄະແນນສຸດທິ (100%):
+                      </span>
+                      <span className="text-xl sm:text-2xl font-black text-amber-600 font-mono">
+                        {wc.final_weighted_total}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Breakdown Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {groups.map((g: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="bg-white/90 p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between space-y-2 hover:border-amber-300 transition-all"
+                      >
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-sky-800 bg-sky-100 px-2 py-0.5 rounded-lg inline-block border border-sky-200">
+                            ສັດສ່ວນ {g.weight_percent}%
+                          </span>
+                          <p className="text-xs font-extrabold text-slate-800 line-clamp-2">
+                            {g.label}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                          <span className="text-slate-500 font-bold text-[11px]">
+                            ສະເລ່ຍ: {g.avg_score}%
+                          </span>
+                          <span className="font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg text-xs font-mono">
+                            +{g.weighted_score}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           {/* Grouped Evaluation Results Tables by Role */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                 <Layers className="w-5 h-5 text-sky-600" />
-                <span>ລາຍການຜົນການປະເມີນແຍກຕາມກຸ່ມ ({allRoleKeys.length} ກຸ່ມ)</span>
+                <span>
+                  ລາຍການຜົນການປະເມີນແຍກຕາມກຸ່ມ ({allRoleKeys.length} ກຸ່ມ)
+                </span>
               </h3>
               <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl">
                 ຈຳນວນຜູ້ປະເມີນລວມ: {totalEvaluators} ຄົນ
@@ -601,7 +678,9 @@ export function TotalScoreView() {
             {allRoleKeys.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 space-y-3">
                 <Info className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="font-bold text-sm">ຍັງບໍ່ມີຂໍ້ມູນການປະເມີນສຳລັບພະນັກງານຄົນນີ້</p>
+                <p className="font-bold text-sm">
+                  ຍັງບໍ່ມີຂໍ້ມູນການປະເມີນສຳລັບພະນັກງານຄົນນີ້
+                </p>
               </div>
             ) : (
               allRoleKeys.map((roleName) => {
@@ -637,20 +716,35 @@ export function TotalScoreView() {
                         <thead className="bg-slate-100/70 text-slate-600 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200">
                           <tr>
                             <th className="py-3 px-4 w-[24%]">ຜູ້ປະເມີນ</th>
-                            <th className="py-3 px-3 w-[10%] text-center">ຫົວຂໍ້ທີ I</th>
-                            <th className="py-3 px-3 w-[10%] text-center">ຫົວຂໍ້ທີ II</th>
-                            <th className="py-3 px-3 w-[10%] text-center">ຫົວຂໍ້ທີ III</th>
-                            <th className="py-3 px-3 w-[10%] text-center">ຫົວຂໍ້ທີ IV</th>
-                            <th className="py-3 px-3 w-[12%] text-right">ຄະແນນລວມ</th>
-                            <th className="py-3 px-3 w-[14%] text-center">ສະເລ່ຍ (ເປີເຊັນ)</th>
-                            <th className="py-3 px-3 w-[10%] text-center">ລາຍລະອຽດ</th>
+                            <th className="py-3 px-3 w-[10%] text-center">
+                              ຫົວຂໍ້ທີ I
+                            </th>
+                            <th className="py-3 px-3 w-[10%] text-center">
+                              ຫົວຂໍ້ທີ II
+                            </th>
+                            <th className="py-3 px-3 w-[10%] text-center">
+                              ຫົວຂໍ້ທີ III
+                            </th>
+                            <th className="py-3 px-3 w-[10%] text-center">
+                              ຫົວຂໍ້ທີ IV
+                            </th>
+                            <th className="py-3 px-3 w-[12%] text-right">
+                              ຄະແນນລວມ
+                            </th>
+                            <th className="py-3 px-3 w-[14%] text-center">
+                              ສະເລ່ຍ (ເປີເຊັນ)
+                            </th>
+                            <th className="py-3 px-3 w-[10%] text-center">
+                              ລາຍລະອຽດ
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {roleItems.map((item) => {
                             const isExpanded = !!expandedItems[item.id];
                             const giverName = item.giver
-                              ? `${item.giver.first_name || ""} ${item.giver.last_name || ""}`.trim() || "ຜູ້ປະເມີນ"
+                              ? `${item.giver.first_name || ""} ${item.giver.last_name || ""}`.trim() ||
+                                "ຜູ້ປະເມີນ"
                               : "ຜູ້ປະເມີນ";
 
                             return (
@@ -670,9 +764,12 @@ export function TotalScoreView() {
                                         </div>
                                       )}
                                       <div>
-                                        <p className="font-black text-slate-800">{giverName}</p>
+                                        <p className="font-black text-slate-800">
+                                          {giverName}
+                                        </p>
                                         <p className="text-[10px] text-slate-400 font-mono">
-                                          {item.giver?.emp_code || `EMP-${item.giverId}`}
+                                          {item.giver?.emp_code ||
+                                            `EMP-${item.giverId}`}
                                         </p>
                                       </div>
                                     </div>
@@ -693,7 +790,9 @@ export function TotalScoreView() {
                                     {item.total_score}
                                   </td>
                                   <td className="py-3.5 px-4 text-center font-black text-amber-600 text-sm">
-                                    {item.percent_score != null ? `${item.percent_score}%` : "-"}
+                                    {item.percent_score != null
+                                      ? `${item.percent_score}%`
+                                      : "-"}
                                   </td>
                                   <td className="py-3.5 px-4 text-center">
                                     <button
@@ -701,8 +800,14 @@ export function TotalScoreView() {
                                       onClick={() => toggleItemExpand(item.id)}
                                       className="p-1.5 rounded-xl bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition-all cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold"
                                     >
-                                      <span>{isExpanded ? "ຊ່ອນ" : "ເບິ່ງຍ່ອຍ"}</span>
-                                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                      <span>
+                                        {isExpanded ? "ຊ່ອນ" : "ເບິ່ງຍ່ອຍ"}
+                                      </span>
+                                      {isExpanded ? (
+                                        <ChevronUp className="w-3.5 h-3.5" />
+                                      ) : (
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                      )}
                                     </button>
                                   </td>
                                 </tr>
@@ -710,7 +815,10 @@ export function TotalScoreView() {
                                 {/* Expanded Itemized Detail Row */}
                                 {isExpanded && (
                                   <tr className="bg-slate-50/80">
-                                    <td colSpan={8} className="p-4 sm:p-6 border-t border-b border-slate-200">
+                                    <td
+                                      colSpan={8}
+                                      className="p-4 sm:p-6 border-t border-b border-slate-200"
+                                    >
                                       <div className="space-y-4 max-w-4xl mx-auto">
                                         <h5 className="text-xs font-black text-slate-700 uppercase tracking-wider">
                                           ລາຍລະອຽດຄະແນນ:
@@ -723,12 +831,24 @@ export function TotalScoreView() {
                                               ຫົວຂໍ້ທີ I (6 ຂໍ້)
                                             </p>
                                             <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                                              <span className="bg-slate-50 p-1 rounded font-mono">1: <b>{item.s1_1}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">2: <b>{item.s1_2}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">3: <b>{item.s1_3}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">4: <b>{item.s1_4}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">5: <b>{item.s1_5}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">6: <b>{item.s1_6}</b></span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                1: <b>{item.s1_1}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                2: <b>{item.s1_2}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                3: <b>{item.s1_3}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                4: <b>{item.s1_4}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                5: <b>{item.s1_5}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                6: <b>{item.s1_6}</b>
+                                              </span>
                                             </div>
                                           </div>
 
@@ -738,11 +858,21 @@ export function TotalScoreView() {
                                               ຫົວຂໍ້ທີ II (5 ຂໍ້)
                                             </p>
                                             <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                                              <span className="bg-slate-50 p-1 rounded font-mono">1: <b>{item.s2_1}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">2: <b>{item.s2_2}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">3: <b>{item.s2_3}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">4: <b>{item.s2_4}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">5: <b>{item.s2_5}</b></span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                1: <b>{item.s2_1}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                2: <b>{item.s2_2}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                3: <b>{item.s2_3}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                4: <b>{item.s2_4}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                5: <b>{item.s2_5}</b>
+                                              </span>
                                             </div>
                                           </div>
 
@@ -752,9 +882,15 @@ export function TotalScoreView() {
                                               ຫົວຂໍ້ທີ III (3 ຂໍ້)
                                             </p>
                                             <div className="grid grid-cols-3 gap-1.5 text-center text-xs">
-                                              <span className="bg-slate-50 p-1 rounded font-mono">1: <b>{item.s3_1}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">2: <b>{item.s3_2}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">3: <b>{item.s3_3}</b></span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                1: <b>{item.s3_1}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                2: <b>{item.s3_2}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                3: <b>{item.s3_3}</b>
+                                              </span>
                                             </div>
                                           </div>
 
@@ -764,8 +900,12 @@ export function TotalScoreView() {
                                               ຫົວຂໍ້ທີ IV (2 ຂໍ້)
                                             </p>
                                             <div className="grid grid-cols-2 gap-1.5 text-center text-xs">
-                                              <span className="bg-slate-50 p-1 rounded font-mono">1: <b>{item.s4_1}</b></span>
-                                              <span className="bg-slate-50 p-1 rounded font-mono">2: <b>{item.s4_2}</b></span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                1: <b>{item.s4_1}</b>
+                                              </span>
+                                              <span className="bg-slate-50 p-1 rounded font-mono">
+                                                2: <b>{item.s4_2}</b>
+                                              </span>
                                             </div>
                                           </div>
                                         </div>
@@ -777,32 +917,89 @@ export function TotalScoreView() {
                             );
                           })}
                         </tbody>
-                        {roleItems.length > 0 && (() => {
-                          const count = roleItems.length;
-                          const avgS1 = roleSummary ? roleSummary.avg_s1_score : (roleItems.reduce((s, i) => s + (i.s1_score || 0), 0) / count).toFixed(2);
-                          const avgS2 = roleSummary ? roleSummary.avg_s2_score : (roleItems.reduce((s, i) => s + (i.s2_score || 0), 0) / count).toFixed(2);
-                          const avgS3 = roleSummary ? roleSummary.avg_s3_score : (roleItems.reduce((s, i) => s + (i.s3_score || 0), 0) / count).toFixed(2);
-                          const avgS4 = roleSummary ? roleSummary.avg_s4_score : (roleItems.reduce((s, i) => s + (i.s4_score || 0), 0) / count).toFixed(2);
-                          const avgTotal = roleSummary ? roleSummary.avg_total_score : (roleItems.reduce((s, i) => s + (i.total_score || 0), 0) / count).toFixed(2);
-                          const avgPercent = roleSummary ? roleSummary.avg_percent_score : (roleItems.reduce((s, i) => s + (i.percent_score || 0), 0) / count).toFixed(2);
+                        {roleItems.length > 0 &&
+                          (() => {
+                            const count = roleItems.length;
+                            const avgS1 = roleSummary
+                              ? roleSummary.avg_s1_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.s1_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
+                            const avgS2 = roleSummary
+                              ? roleSummary.avg_s2_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.s2_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
+                            const avgS3 = roleSummary
+                              ? roleSummary.avg_s3_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.s3_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
+                            const avgS4 = roleSummary
+                              ? roleSummary.avg_s4_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.s4_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
+                            const avgTotal = roleSummary
+                              ? roleSummary.avg_total_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.total_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
+                            const avgPercent = roleSummary
+                              ? roleSummary.avg_percent_score
+                              : (
+                                  roleItems.reduce(
+                                    (s, i) => s + (i.percent_score || 0),
+                                    0,
+                                  ) / count
+                                ).toFixed(2);
 
-                          return (
-                            <tfoot className="bg-sky-100/70 border-t-2 border-sky-300 text-xs font-black">
-                              <tr>
-                                <td className="py-3 px-4 text-sky-900 font-black">
-                                  ຄະແນນສະເລ່ຍກຸ່ມ {roleName}
-                                </td>
-                                <td className="py-3 px-3 text-center text-sky-900">{avgS1}</td>
-                                <td className="py-3 px-3 text-center text-sky-900">{avgS2}</td>
-                                <td className="py-3 px-3 text-center text-sky-900">{avgS3}</td>
-                                <td className="py-3 px-3 text-center text-sky-900">{avgS4}</td>
-                                <td className="py-3 px-3 text-right font-black text-sky-950 text-sm">{avgTotal}</td>
-                                <td className="py-3 px-3 text-center font-black text-amber-700 text-sm">{avgPercent}%</td>
-                                <td className="py-3 px-3 text-center text-slate-400">-</td>
-                              </tr>
-                            </tfoot>
-                          );
-                        })()}
+                            return (
+                              <tfoot className="bg-sky-100/70 border-t-2 border-sky-300 text-xs font-black">
+                                <tr>
+                                  <td className="py-3 px-4 text-sky-900 font-black">
+                                    ຄະແນນສະເລ່ຍກຸ່ມ {roleName}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-sky-900">
+                                    {avgS1}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-sky-900">
+                                    {avgS2}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-sky-900">
+                                    {avgS3}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-sky-900">
+                                    {avgS4}
+                                  </td>
+                                  <td className="py-3 px-3 text-right font-black text-sky-950 text-sm">
+                                    {avgTotal}
+                                  </td>
+                                  <td className="py-3 px-3 text-center font-black text-amber-700 text-sm">
+                                    {avgPercent}%
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-slate-400">
+                                    -
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            );
+                          })()}
                       </table>
                     </div>
                   </div>
@@ -818,7 +1015,9 @@ export function TotalScoreView() {
             ກະລຸນາເລືອກ ພະນັກງານ ເພື່ອເບິ່ງຜົນການປະເມີນ 360
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-            ພິມຄົ້ນຫາ ລະຫັດພະນັກງານ ຈາກຊ່ອງຄົ້ນຫາດ້ານເທິງ ແລ້ວກົດປຸ່ມ &quot;ຄົ້ນຫາ&quot; ເພື່ອສະແດງຜົນການປະເມີນ ແລະ ສຫຼຸບຄະແນນແຍກຕາມບົດບາດຜູ້ປະເມີນ
+            ພິມຄົ້ນຫາ ລະຫັດພະນັກງານ ຈາກຊ່ອງຄົ້ນຫາດ້ານເທິງ ແລ້ວກົດປຸ່ມ
+            &quot;ຄົ້ນຫາ&quot; ເພື່ອສະແດງຜົນການປະເມີນ ແລະ
+            ສຫຼຸບຄະແນນແຍກຕາມບົດບາດຜູ້ປະເມີນ
           </p>
         </div>
       )}

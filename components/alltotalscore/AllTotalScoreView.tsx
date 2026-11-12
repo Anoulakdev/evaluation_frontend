@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import Link from "next/link";
 import {
   Search,
@@ -74,14 +80,14 @@ const roleMap: Record<number, string> = {
   1: "Admin",
   2: "ຜູ້ອຳນວຍການ",
   3: "ຮອງຜູ້ອຳນວຍການ",
-  4: 'ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ',
-  5: 'ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ',
-  6: 'ຄະນະພະແນກ/ສູນ/ສາຂາ',
-  7: 'ຄະນະຫ້ອງການ',
-  8: 'ຄະນະໜ່ວຍງານ',
-  9: 'ວິຊາການ',
-  10: 'ປະເມີນຕົນເອງ',
-  15: 'ຮອງ ຜອ IPP',
+  4: "ຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ",
+  5: "ຮອງຫົວໜ້າຝ່າຍ/ສະຖາບັນ/ຫ້ອງການ",
+  6: "ຄະນະພະແນກ/ສູນ/ສາຂາ",
+  7: "ຄະນະຫ້ອງການ",
+  8: "ຄະນະໜ່ວຍງານ",
+  9: "ວິຊາການ",
+  10: "ປະເມີນຕົນເອງ",
+  15: "ຮອງ ຜອ IPP",
 };
 
 export const getRoleName = (roleId?: number | null): string => {
@@ -131,7 +137,9 @@ export function AllTotalScoreView() {
 
   // Departments & Divisions
   const [deptList, setDeptList] = useState<{ id: number; name: string }[]>([]);
-  const [divisionList, setDivisionList] = useState<{ id: number; name: string }[]>([]);
+  const [divisionList, setDivisionList] = useState<
+    { id: number; name: string }[]
+  >([]);
   const [selectedDeptId, setSelectedDeptId] = useState<string>("");
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>("");
 
@@ -154,7 +162,8 @@ export function AllTotalScoreView() {
   const [pageSize, setPageSize] = useState(8);
 
   // Detail Modal State
-  const [detailModalItem, setDetailModalItem] = useState<ReceiverScoreItem | null>(null);
+  const [detailModalItem, setDetailModalItem] =
+    useState<ReceiverScoreItem | null>(null);
 
   // Fetch Departments
   useEffect(() => {
@@ -170,7 +179,7 @@ export function AllTotalScoreView() {
           list.map((d: any) => ({
             id: Number(d.id),
             name: String(d.department_name || `Department #${d.id}`),
-          }))
+          })),
         );
       })
       .catch((err) => console.warn("Failed to fetch departments:", err));
@@ -196,7 +205,7 @@ export function AllTotalScoreView() {
           list.map((d: any) => ({
             id: Number(d.id),
             name: String(d.division_name || `Division #${d.id}`),
-          }))
+          })),
         );
       })
       .catch((err) => {
@@ -211,54 +220,64 @@ export function AllTotalScoreView() {
   const activeRequestIdRef = useRef(0);
 
   // Fetch All Total Scores (Paginated from Server with Race Condition Protection)
-  const fetchAllScores = useCallback(async (targetPage: number = page) => {
-    const requestId = ++activeRequestIdRef.current;
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchAllScores = useCallback(
+    async (targetPage: number = page) => {
+      const requestId = ++activeRequestIdRef.current;
+      try {
+        setLoading(true);
+        setError(null);
 
-      const params: Record<string, string | number> = {
-        page: targetPage,
-        limit: pageSize,
-      };
-      if (selectedDeptId) params.departmentId = Number(selectedDeptId);
-      if (selectedDivisionId) params.divisionId = Number(selectedDivisionId);
-      if (roleFilter !== "ALL") params.roleId = Number(roleFilter);
-      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+        const params: Record<string, string | number> = {
+          page: targetPage,
+          limit: pageSize,
+        };
+        if (selectedDeptId) params.departmentId = Number(selectedDeptId);
+        if (selectedDivisionId) params.divisionId = Number(selectedDivisionId);
+        if (roleFilter !== "ALL") params.roleId = Number(roleFilter);
+        if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-      const res = await axiosInstance.get("/totals/resultall", {
-        params,
-      });
+        const res = await axiosInstance.get("/totals/resultall", {
+          params,
+        });
 
-      if (requestId !== activeRequestIdRef.current) return;
+        if (requestId !== activeRequestIdRef.current) return;
 
-      const resData = res.data as { data?: ReceiverScoreItem[]; total?: number } | ReceiverScoreItem[];
-      if (resData && typeof resData === "object" && "data" in resData && Array.isArray(resData.data)) {
-        setResults(resData.data);
-        setTotalCount(resData.total ?? resData.data.length);
-      } else if (Array.isArray(resData)) {
-        setResults(resData);
-        setTotalCount(resData.length);
-      } else {
+        const resData = res.data as
+          | { data?: ReceiverScoreItem[]; total?: number }
+          | ReceiverScoreItem[];
+        if (
+          resData &&
+          typeof resData === "object" &&
+          "data" in resData &&
+          Array.isArray(resData.data)
+        ) {
+          setResults(resData.data);
+          setTotalCount(resData.total ?? resData.data.length);
+        } else if (Array.isArray(resData)) {
+          setResults(resData);
+          setTotalCount(resData.length);
+        } else {
+          setResults([]);
+          setTotalCount(0);
+        }
+      } catch (err: unknown) {
+        if (requestId !== activeRequestIdRef.current) return;
+        console.error("Failed to fetch all total scores:", err);
+        const axiosErr = err as { response?: { data?: { message?: string } } };
+        setError(
+          axiosErr?.response?.data?.message ||
+            "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ",
+        );
         setResults([]);
         setTotalCount(0);
+      } finally {
+        if (requestId === activeRequestIdRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (err: unknown) {
-      if (requestId !== activeRequestIdRef.current) return;
-      console.error("Failed to fetch all total scores:", err);
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      setError(
-        axiosErr?.response?.data?.message ||
-        "ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ"
-      );
-      setResults([]);
-      setTotalCount(0);
-    } finally {
-      if (requestId === activeRequestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch]);
+    },
+    [pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch],
+  );
 
   const prevFiltersRef = useRef({
     selectedDeptId,
@@ -292,7 +311,15 @@ export function AllTotalScoreView() {
     }
 
     fetchAllScores(page);
-  }, [page, pageSize, selectedDeptId, selectedDivisionId, roleFilter, debouncedSearch, fetchAllScores]);
+  }, [
+    page,
+    pageSize,
+    selectedDeptId,
+    selectedDivisionId,
+    roleFilter,
+    debouncedSearch,
+    fetchAllScores,
+  ]);
 
   // Department / Division lookup maps
   const deptMap = useMemo(() => {
@@ -354,13 +381,21 @@ export function AllTotalScoreView() {
       const wb = XLSX.utils.book_new();
       const sheetData: any[] = [];
 
-      sheetData.push(["ລາຍງານຜົນການປະເມີນ 360 ອົງສາລວມທັງໝົດ (EDL EVALUATION)"]);
-      sheetData.push([`ວັນທີສ້າງລາຍງານ: ${new Date().toLocaleDateString("lo-LA")}`]);
+      sheetData.push([
+        "ລາຍງານຜົນການປະເມີນ 360 ອົງສາລວມທັງໝົດ (EDL EVALUATION)",
+      ]);
+      sheetData.push([
+        `ວັນທີສ້າງລາຍງານ: ${new Date().toLocaleDateString("lo-LA")}`,
+      ]);
       if (selectedDeptId) {
-        sheetData.push([`ພາກສ່ວນ/ຝ່າຍ: ${deptMap.get(Number(selectedDeptId)) || ""}`]);
+        sheetData.push([
+          `ພາກສ່ວນ/ຝ່າຍ: ${deptMap.get(Number(selectedDeptId)) || ""}`,
+        ]);
       }
       if (selectedDivisionId) {
-        sheetData.push([`ພະແນກ/ສູນ: ${divisionMap.get(Number(selectedDivisionId)) || ""}`]);
+        sheetData.push([
+          `ພະແນກ/ສູນ: ${divisionMap.get(Number(selectedDivisionId)) || ""}`,
+        ]);
       }
       if (roleFilter !== "ALL") {
         sheetData.push([`ບົດບາດ: ${getRoleName(Number(roleFilter))}`]);
@@ -380,24 +415,31 @@ export function AllTotalScoreView() {
       ]);
 
       exportData.forEach((item, index) => {
-        const posName =
-          item.position?.name || item.position?.pos_name || "-";
+        const posName = item.position?.name || item.position?.pos_name || "-";
         const deptName =
           item.department?.name ||
           item.department?.department_name ||
-          (item.departmentId ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}` : "-");
+          (item.departmentId
+            ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}`
+            : "-");
         const divName =
           item.division?.name ||
           item.division?.division_name ||
-          (item.divisionId ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}` : "-");
+          (item.divisionId
+            ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}`
+            : "-");
 
         const wc = item._weightedCalculation;
         const groups = wc
-          ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+          ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(
+              Boolean,
+            )
           : [];
         const breakdownText =
           groups.length > 0
-            ? groups.map((g: any) => `${g.label || ""}: ${g.weighted_score}%`).join(", ")
+            ? groups
+                .map((g: any) => `${g.label || ""}: ${g.weighted_score}%`)
+                .join(", ")
             : "-";
 
         sheetData.push([
@@ -441,24 +483,32 @@ export function AllTotalScoreView() {
         const deptName =
           item.department?.name ||
           item.department?.department_name ||
-          (item.departmentId ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}` : "-");
+          (item.departmentId
+            ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}`
+            : "-");
         const divName =
           item.division?.name ||
           item.division?.division_name ||
-          (item.divisionId ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}` : "");
-        const deptDivText = divName && divName !== "-" ? `${deptName} / ${divName}` : deptName;
+          (item.divisionId
+            ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}`
+            : "");
+        const deptDivText =
+          divName && divName !== "-" ? `${deptName} / ${divName}` : deptName;
 
         const wc = item._weightedCalculation;
         const groups = wc
-          ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+          ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(
+              Boolean,
+            )
           : [];
         const breakdownText =
           groups.length > 0
-            ? groups.map((g: any) => `${g.label || ""}: ${g.weighted_score}%`).join(", ")
+            ? groups
+                .map((g: any) => `${g.label || ""}: ${g.weighted_score}%`)
+                .join(", ")
             : "-";
 
-        const posName =
-          item.position?.name || item.position?.pos_name || "-";
+        const posName = item.position?.name || item.position?.pos_name || "-";
 
         return {
           receiverId: item.receiverId,
@@ -469,6 +519,11 @@ export function AllTotalScoreView() {
           roleName: getRoleName(item.roleId),
           deptDivText,
           breakdownText,
+          breakdownGroups: groups.map((g: any) => ({
+            label: g.label || "",
+            weighted_score: g.weighted_score,
+            weight_percent: g.weight_percent,
+          })),
           finalTotal: item.finalTotal,
         };
       });
@@ -480,7 +535,7 @@ export function AllTotalScoreView() {
           departmentFilterName={
             selectedDeptId ? deptMap.get(Number(selectedDeptId)) : undefined
           }
-        />
+        />,
       ).toBlob();
 
       const url = URL.createObjectURL(docBlob);
@@ -521,25 +576,29 @@ export function AllTotalScoreView() {
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all border border-white/15 backdrop-blur-md shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
               title="ໂຫຼດຂໍ້ມູນຄືນໃໝ່"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
               <span>ຣີເຟຣຊ</span>
             </button>
 
-            <button
+            {/* <button
               onClick={handleExportExcel}
               disabled={totalCount === 0 || exportingExcel}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? "animate-spin" : ""}`} />
               <span>{exportingExcel ? "ກຳລັງດາວໂຫຼດ..." : "Excel"}</span>
-            </button>
+            </button> */}
 
             <button
               onClick={handleExportPDF}
               disabled={totalCount === 0 || exportingPDF}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              <FileText className={`w-4 h-4 ${exportingPDF ? "animate-spin" : ""}`} />
+              <FileText
+                className={`w-4 h-4 ${exportingPDF ? "animate-spin" : ""}`}
+              />
               <span>{exportingPDF ? "ກຳລັງສ້າງ PDF..." : "PDF"}</span>
             </button>
           </div>
@@ -551,7 +610,9 @@ export function AllTotalScoreView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="w-4 h-4 text-sky-600" />
-            <h3 className="text-sm font-black text-slate-800">ຕົວກັ່ນຕອງ & ຄົ້ນຫາ</h3>
+            <h3 className="text-sm font-black text-slate-800">
+              ຕົວກັ່ນຕອງ & ຄົ້ນຫາ
+            </h3>
           </div>
 
           <div className="flex items-center gap-2">
@@ -559,20 +620,22 @@ export function AllTotalScoreView() {
             <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
               <button
                 onClick={() => setViewMode("table")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${viewMode === "table"
-                  ? "bg-white text-sky-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === "table"
+                    ? "bg-white text-sky-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
               >
                 <List className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">ຕາຕະລາງ</span>
               </button>
               <button
                 onClick={() => setViewMode("grid")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${viewMode === "grid"
-                  ? "bg-white text-sky-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-white text-sky-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">ກາດ</span>
@@ -672,7 +735,8 @@ export function AllTotalScoreView() {
         {/* Total Count */}
         <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs">
           <div className="text-slate-500 font-semibold">
-            ພົບເຫັນທັງໝົດ <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
+            ພົບເຫັນທັງໝົດ{" "}
+            <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
           </div>
         </div>
       </div>
@@ -681,7 +745,9 @@ export function AllTotalScoreView() {
       {loading ? (
         <div className="p-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm space-y-4">
           <RefreshCw className="w-8 h-8 animate-spin text-sky-600 mx-auto" />
-          <p className="font-bold text-sm text-slate-600">ກຳລັງໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ...</p>
+          <p className="font-bold text-sm text-slate-600">
+            ກຳລັງໂຫຼດຂໍ້ມູນຜົນການປະເມີນລວມ...
+          </p>
         </div>
       ) : error ? (
         <div className="p-8 text-center bg-rose-50 rounded-3xl border border-rose-200 text-rose-700 space-y-3">
@@ -697,9 +763,12 @@ export function AllTotalScoreView() {
       ) : totalCount === 0 ? (
         <div className="p-16 text-center bg-white rounded-3xl border border-slate-200/90 shadow-sm space-y-3">
           <Info className="w-10 h-10 text-slate-300 mx-auto" />
-          <h4 className="font-bold text-base text-slate-700">ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນ</h4>
+          <h4 className="font-bold text-base text-slate-700">
+            ບໍ່ພົບຂໍ້ມູນຜົນການປະເມີນ
+          </h4>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            ບໍ່ມີຂໍ້ມູນທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາ ຫຼື ຍັງບໍ່ທັນມີການປະເມີນໃນພາກສ່ວນນີ້
+            ບໍ່ມີຂໍ້ມູນທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາ ຫຼື
+            ຍັງບໍ່ທັນມີການປະເມີນໃນພາກສ່ວນນີ້
           </p>
           <button
             onClick={handleResetFilters}
@@ -721,8 +790,12 @@ export function AllTotalScoreView() {
                   <th className="py-3.5 px-4 min-w-[170px]">ບົດບາດ</th>
                   <th className="py-3.5 px-4 min-w-[180px]">ພາກສ່ວນ</th>
                   <th className="py-3.5 px-4 min-w-[200px]">ສັດສ່ວນເປີເຊັນ</th>
-                  <th className="py-3.5 px-4 text-center min-w-[130px]">ຄະແນນສຸດທິ</th>
-                  <th className="py-3.5 px-4 text-center min-w-[120px]">ຈັດການ</th>
+                  <th className="py-3.5 px-4 text-center min-w-[130px]">
+                    ຄະແນນສຸດທິ
+                  </th>
+                  <th className="py-3.5 px-4 text-center min-w-[120px]">
+                    ຈັດການ
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
@@ -730,7 +803,13 @@ export function AllTotalScoreView() {
                   const absoluteIndex = (page - 1) * pageSize + idx + 1;
                   const wc = item._weightedCalculation;
                   const groups = wc
-                    ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+                    ? [
+                        wc.groupA,
+                        wc.groupB,
+                        wc.groupC,
+                        wc.groupD,
+                        wc.groupE,
+                      ].filter(Boolean)
                     : [];
 
                   return (
@@ -765,7 +844,9 @@ export function AllTotalScoreView() {
                       {/* Position */}
                       <td className="py-3 px-4">
                         <span className="text-xs font-bold text-slate-800 line-clamp-1">
-                          {item.position?.name || item.position?.pos_name || "-"}
+                          {item.position?.name ||
+                            item.position?.pos_name ||
+                            "-"}
                         </span>
                       </td>
 
@@ -784,20 +865,22 @@ export function AllTotalScoreView() {
                             {item.department?.name ||
                               item.department?.department_name ||
                               (item.departmentId
-                                ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}`
+                                ? deptMap.get(item.departmentId) ||
+                                  `Dept #${item.departmentId}`
                                 : "-")}
                           </p>
                           {(item.division?.name ||
                             item.division?.division_name ||
                             item.divisionId) && (
-                              <p className="text-[10px] text-slate-400 line-clamp-1">
-                                {item.division?.name ||
-                                  item.division?.division_name ||
-                                  (item.divisionId
-                                    ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}`
-                                    : "")}
-                              </p>
-                            )}
+                            <p className="text-[10px] text-slate-400 line-clamp-1">
+                              {item.division?.name ||
+                                item.division?.division_name ||
+                                (item.divisionId
+                                  ? divisionMap.get(item.divisionId) ||
+                                    `Div #${item.divisionId}`
+                                  : "")}
+                            </p>
+                          )}
                         </div>
                       </td>
 
@@ -811,7 +894,9 @@ export function AllTotalScoreView() {
                                 title={g.label || ""}
                                 className="relative group/tooltip inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 hover:bg-sky-50 hover:border-sky-300 hover:text-sky-800 transition-all cursor-pointer"
                               >
-                                <span className="text-slate-500">{g.weight_percent}%:</span>
+                                <span className="text-slate-500">
+                                  {g.weight_percent}%:
+                                </span>
                                 <span className="font-mono text-sky-700 font-black">
                                   {g.weighted_score}%
                                 </span>
@@ -819,7 +904,9 @@ export function AllTotalScoreView() {
                                 {/* Instant Floating Tooltip */}
                                 <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-150 ease-out z-50 whitespace-nowrap drop-shadow-xl">
                                   <div className="bg-slate-900 text-white text-[11px] font-semibold py-1 px-2.5 rounded-lg border border-slate-700 text-center">
-                                    <span className="font-bold text-sky-300">{g.label}</span>
+                                    <span className="font-bold text-sky-300">
+                                      {g.label}
+                                    </span>
                                   </div>
                                   <div className="w-2 h-2 bg-slate-900 rotate-45 mx-auto -mt-1" />
                                 </div>
@@ -890,7 +977,8 @@ export function AllTotalScoreView() {
                 <option value={100}>100</option>
               </select>
               <span>
-                ຈາກທັງໝົດ <strong className="text-slate-800">{totalCount}</strong> ລາຍການ
+                ຈາກທັງໝົດ{" "}
+                <strong className="text-slate-800">{totalCount}</strong> ລາຍການ
               </span>
             </div>
 
@@ -942,7 +1030,13 @@ export function AllTotalScoreView() {
             {paginatedData.map((item) => {
               const wc = item._weightedCalculation;
               const groups = wc
-                ? [wc.groupA, wc.groupB, wc.groupC, wc.groupD, wc.groupE].filter(Boolean)
+                ? [
+                    wc.groupA,
+                    wc.groupB,
+                    wc.groupC,
+                    wc.groupD,
+                    wc.groupE,
+                  ].filter(Boolean)
                 : [];
 
               return (
@@ -986,20 +1080,22 @@ export function AllTotalScoreView() {
                         {item.department?.name ||
                           item.department?.department_name ||
                           (item.departmentId
-                            ? deptMap.get(item.departmentId) || `Dept #${item.departmentId}`
+                            ? deptMap.get(item.departmentId) ||
+                              `Dept #${item.departmentId}`
                             : "-")}
                       </p>
                       {(item.division?.name ||
                         item.division?.division_name ||
                         item.divisionId) && (
-                          <p className="text-[10px] text-slate-400 line-clamp-1">
-                            {item.division?.name ||
-                              item.division?.division_name ||
-                              (item.divisionId
-                                ? divisionMap.get(item.divisionId) || `Div #${item.divisionId}`
-                                : "")}
-                          </p>
-                        )}
+                        <p className="text-[10px] text-slate-400 line-clamp-1">
+                          {item.division?.name ||
+                            item.division?.division_name ||
+                            (item.divisionId
+                              ? divisionMap.get(item.divisionId) ||
+                                `Div #${item.divisionId}`
+                              : "")}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1018,7 +1114,9 @@ export function AllTotalScoreView() {
                   {/* 360 Mini Groups Preview */}
                   {groups.length > 0 && (
                     <div className="space-y-1.5 pt-1 border-t border-slate-100">
-                      <p className="text-[10px] font-bold text-slate-400">ສັດສ່ວນນ້ຳໜັກ 360°:</p>
+                      <p className="text-[10px] font-bold text-slate-400">
+                        ສັດສ່ວນນ້ຳໜັກ 360°:
+                      </p>
                       <div className="grid grid-cols-2 gap-1 text-[10px]">
                         {groups.map((g: any, gIdx: number) => (
                           <div
@@ -1026,7 +1124,9 @@ export function AllTotalScoreView() {
                             title={g.label || ""}
                             className="relative group/tooltip bg-slate-50 hover:bg-sky-50 hover:border-sky-200 px-2 py-1 rounded-lg border border-slate-100 flex justify-between items-center transition-all cursor-pointer"
                           >
-                            <span className="font-bold text-slate-600">{g.weight_percent}%:</span>
+                            <span className="font-bold text-slate-600">
+                              {g.weight_percent}%:
+                            </span>
                             <span className="font-black font-mono text-sky-700">
                               {g.weighted_score}%
                             </span>
@@ -1034,7 +1134,9 @@ export function AllTotalScoreView() {
                             {/* Instant Floating Tooltip */}
                             <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-150 ease-out z-50 whitespace-nowrap drop-shadow-xl">
                               <div className="bg-slate-900 text-white text-[11px] font-semibold py-1 px-2.5 rounded-lg border border-slate-700 text-center">
-                                <span className="font-bold text-sky-300">{g.label}</span>
+                                <span className="font-bold text-sky-300">
+                                  {g.label}
+                                </span>
                               </div>
                               <div className="w-2 h-2 bg-slate-900 rotate-45 mx-auto -mt-1" />
                             </div>
@@ -1072,8 +1174,10 @@ export function AllTotalScoreView() {
           {/* Pagination Controls for Grid View */}
           <div className="p-4 bg-white rounded-3xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500">
             <div>
-              ສະແດງ <strong className="text-slate-800">{paginatedData.length}</strong> ຈາກທັງໝົດ{" "}
-              <strong className="text-slate-800">{totalCount}</strong> ທ່ານ
+              ສະແດງ{" "}
+              <strong className="text-slate-800">{paginatedData.length}</strong>{" "}
+              ຈາກທັງໝົດ <strong className="text-slate-800">{totalCount}</strong>{" "}
+              ທ່ານ
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -1112,10 +1216,12 @@ export function AllTotalScoreView() {
                 />
                 <div>
                   <h3 className="text-lg font-black text-white">
-                    {detailModalItem.first_name || ""} {detailModalItem.last_name || ""}
+                    {detailModalItem.first_name || ""}{" "}
+                    {detailModalItem.last_name || ""}
                   </h3>
                   <p className="text-xs text-sky-200 font-mono">
-                    ລະຫັດ: {detailModalItem.emp_code || "-"} | {getRoleName(detailModalItem.roleId)}
+                    ລະຫັດ: {detailModalItem.emp_code || "-"} |{" "}
+                    {getRoleName(detailModalItem.roleId)}
                   </p>
                 </div>
               </div>
@@ -1133,7 +1239,9 @@ export function AllTotalScoreView() {
               {/* Score Highlight Header */}
               <div className="bg-gradient-to-br from-sky-50 via-indigo-50 to-amber-50/50 border border-sky-200 p-5 rounded-3xl flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-slate-600">ຄະແນນລວມສຸດທິ (100%):</span>
+                  <span className="text-xs font-bold text-slate-600">
+                    ຄະແນນລວມສຸດທິ (100%):
+                  </span>
                   <div className="text-3xl font-black text-sky-900 font-mono mt-0.5">
                     {detailModalItem.finalTotal}%
                   </div>
@@ -1176,7 +1284,9 @@ export function AllTotalScoreView() {
                           </p>
                           <div className="text-[11px] text-slate-500 font-bold pt-1 border-t border-slate-200/60 flex justify-between">
                             <span>ຄະແນນສະເລ່ຍກຸ່ມ:</span>
-                            <span className="font-mono text-slate-900">{g.avg_score}%</span>
+                            <span className="font-mono text-slate-900">
+                              {g.avg_score}%
+                            </span>
                           </div>
                         </div>
                       ))}
