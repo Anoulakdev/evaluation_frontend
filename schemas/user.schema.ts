@@ -62,6 +62,7 @@ export const userItemSchema = z.object({
   position: z.object({ id: z.number(), posnameId: z.string().optional(), pos_name: z.string().optional() }).nullable().optional(),
   role: z.object({ id: z.number(), name: z.string().optional() }).nullable().optional(),
   createdAt: z.string().optional(),
+  isEvaluated: z.boolean().optional(),
 });
 
 export type CreateUserData = z.infer<typeof createUserSchema>;

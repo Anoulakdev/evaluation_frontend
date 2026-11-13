@@ -146,6 +146,9 @@ export function UserList() {
   const [posFilter, setPosFilter] = useState<number | "">("");
   const [positionList, setPositionList] = useState<PositionItem[]>([]);
 
+  // Evaluation Status Filter State ("ALL" | "true" | "false")
+  const [evaluatedFilter, setEvaluatedFilter] = useState<string>("ALL");
+
   // Pagination State for TanStack Table
   const [{ pageIndex, pageSize }, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -397,6 +400,7 @@ export function UserList() {
           officeId: officeFilter || undefined,
           unitId: unitFilter || undefined,
           posId: posFilter || undefined,
+          isEvaluated: evaluatedFilter !== "ALL" ? evaluatedFilter : undefined,
         },
       });
 
@@ -444,6 +448,7 @@ export function UserList() {
     officeFilter,
     unitFilter,
     posFilter,
+    evaluatedFilter,
   ]);
 
   const prevFiltersRef = useRef({
@@ -454,6 +459,7 @@ export function UserList() {
     officeFilter,
     unitFilter,
     posFilter,
+    evaluatedFilter,
     pageSize,
   });
 
@@ -468,6 +474,7 @@ export function UserList() {
       prev.officeFilter !== officeFilter ||
       prev.unitFilter !== unitFilter ||
       prev.posFilter !== posFilter ||
+      prev.evaluatedFilter !== evaluatedFilter ||
       prev.pageSize !== pageSize;
 
     prevFiltersRef.current = {
@@ -478,6 +485,7 @@ export function UserList() {
       officeFilter,
       unitFilter,
       posFilter,
+      evaluatedFilter,
       pageSize,
     };
 
@@ -497,6 +505,7 @@ export function UserList() {
     officeFilter,
     unitFilter,
     posFilter,
+    evaluatedFilter,
     fetchUsers,
   ]);
 
@@ -696,6 +705,26 @@ export function UserList() {
                   </span>
                 )}
               </button>
+            </div>
+          );
+        },
+      }),
+
+      columnHelper.accessor("isEvaluated", {
+        header: () => <div className="text-center">ການປະເມີນ</div>,
+        cell: (info) => {
+          const u = info.row.original;
+          return (
+            <div className="text-center">
+              {u.isEvaluated ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> ສຳເລັດ
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                  <XCircle className="w-3 h-3 text-rose-600" /> ບໍ່ສຳເລັດ
+                </span>
+              )}
             </div>
           );
         },
@@ -1012,6 +1041,20 @@ export function UserList() {
                   {p.pos_name || p.posnameId || `Position #${p.id}`}
                 </option>
               ))}
+            </select>
+
+            {/* Evaluation Status Filter */}
+            <select
+              value={evaluatedFilter}
+              onChange={(e) => {
+                setEvaluatedFilter(e.target.value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+              }}
+              className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-sky-500 focus:outline-none font-medium text-slate-800 h-9 max-w-[150px] truncate"
+            >
+              <option value="ALL">-- ການປະເມີນທັງໝົດ --</option>
+              <option value="true">ສຳເລັດ</option>
+              <option value="false">ບໍ່ສຳເລັດ</option>
             </select>
 
             <Button variant="outline" size="sm" onClick={() => fetchUsers(pageIndex)} disabled={loading} className="h-9 text-xs shrink-0">
