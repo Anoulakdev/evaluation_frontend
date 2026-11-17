@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Cookies from "js-cookie";
 import { axiosInstance, isAxiosError } from "@/lib/axiosInstance";
 import {
   UserItem,
@@ -85,6 +86,8 @@ export function UserList() {
   const isRole13 = currentUser?.roleId === 13;
   const isRole14 = currentUser?.roleId === 14;
   const canManageUsers = isRole1 || isRole11;
+  const canResetPassword = isRole1 || isRole11 || isRole13 || isRole14;
+  const showActionsColumn = canManageUsers || isRole13 || isRole14;
 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
@@ -379,6 +382,11 @@ export function UserList() {
 
   // Fetch users directly from Backend API (findAllUser: /users) with pagination
   const fetchUsers = useCallback(async (targetPageIndex: number = pageIndex) => {
+    if (typeof window !== "undefined") {
+      const token = Cookies.get("token") || localStorage.getItem("token");
+      if (!token) return;
+    }
+
     const requestId = ++activeRequestIdRef.current;
     setLoading(true);
     setAuthError(false);
@@ -427,9 +435,13 @@ export function UserList() {
       }
     } catch (err: unknown) {
       if (requestId !== activeRequestIdRef.current) return;
+      if (isAxiosError(err) && err.response?.status === 401) {
+        // Token expired or session cleared during logout; suppress warning
+        return;
+      }
       console.warn("Failed to fetch users from backend /users:", err);
       setUsers([]);
-      if (isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403)) {
+      if (isAxiosError(err) && err.response?.status === 403) {
         setAuthError(true);
       }
     } finally {
@@ -747,7 +759,7 @@ export function UserList() {
         },
       }),
 
-      ...(canManageUsers
+      ...(showActionsColumn
         ? [
           columnHelper.display({
             id: "actions",
@@ -756,53 +768,61 @@ export function UserList() {
               const u = info.row.original;
               return (
                 <div className="flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="ແກ້ໄຂຂໍ້ມູນ"
-                    onClick={() => {
-                      setSelectedUser(u);
-                      setIsEditOpen(true);
-                    }}
-                  >
-                    <Edit3 className="w-4 h-4 text-sky-600" />
-                  </Button>
+                  {canManageUsers && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="ແກ້ໄຂຂໍ້ມູນ"
+                      onClick={() => {
+                        setSelectedUser(u);
+                        setIsEditOpen(true);
+                      }}
+                    >
+                      <Edit3 className="w-4 h-4 text-sky-600" />
+                    </Button>
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="ຣີເຊັດລະຫັດຜ່ານ"
-                    onClick={() => {
-                      setSelectedUser(u);
-                      setIsResetPassOpen(true);
-                    }}
-                  >
-                    <KeyRound className="w-4 h-4 text-amber-600" />
-                  </Button>
+                  {canResetPassword && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="ຣີເຊັດລະຫັດຜ່ານ"
+                      onClick={() => {
+                        setSelectedUser(u);
+                        setIsResetPassOpen(true);
+                      }}
+                    >
+                      <KeyRound className="w-4 h-4 text-amber-600" />
+                    </Button>
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="ລຶບການປະເມີນ"
-                    onClick={() => {
-                      setSelectedUser(u);
-                      setIsDeleteEvalOpen(true);
-                    }}
-                  >
-                    <FileX className="w-4 h-4 text-rose-500" />
-                  </Button>
+                  {canManageUsers && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="ລຶບການປະເມີນ"
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setIsDeleteEvalOpen(true);
+                        }}
+                      >
+                        <FileX className="w-4 h-4 text-rose-500" />
+                      </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="ລຶບຜູ້ໃຊ້"
-                    onClick={() => {
-                      setSelectedUser(u);
-                      setIsDeleteOpen(true);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4 text-rose-600" />
-                  </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="ລຶບຜູ້ໃຊ້"
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setIsDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               );
             },
@@ -810,7 +830,7 @@ export function UserList() {
         ]
         : []),
     ],
-    [roles, canManageUsers]
+    [roles, canManageUsers, canResetPassword, showActionsColumn]
   );
 
   const paginationState = useMemo(
