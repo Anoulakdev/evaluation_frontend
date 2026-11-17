@@ -396,10 +396,18 @@ export function OrganizationView() {
           const officeName = (raw.office as { office_name?: string })?.office_name || undefined;
           const unitType = (raw.unit_type as string) || undefined;
 
+          const status =
+            (raw.department_status as string) ||
+            (raw.division_status as string) ||
+            (raw.office_status as string) ||
+            (raw.status as string) ||
+            "A";
+
           return {
             id,
             code,
             name,
+            status,
             parentId,
             parentName,
             branchId,
@@ -470,6 +478,44 @@ export function OrganizationView() {
     setTimeout(() => setToastMsg(""), 4000);
     fetchActiveItems();
     fetchCounts();
+  };
+
+  // Handle Update Department Status
+  const handleUpdateDeptStatus = async (item: GenericOrgItem) => {
+    const nextStatus = item.status === "A" ? "C" : "A";
+    setItems((prev) =>
+      prev.map((it) => (it.id === item.id ? { ...it, status: nextStatus } : it))
+    );
+    try {
+      await axiosInstance.put(`/departments/updatestatus/${item.id}?actived=${nextStatus}`);
+      setToastMsg(`ປ່ຽນສະຖານະເປັນ ${nextStatus === "A" ? "ໃຊ້ງານຢູ່" : "ປິດໃຊ້ງານ"} ສຳເລັດ!`);
+    } catch (err: unknown) {
+      console.warn("Failed to update department status:", err);
+      setItems((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, status: item.status } : it))
+      );
+      setToastMsg("ເກີດຂໍ້ຜິດພາດໃນການປ່ຽນສະຖານະ");
+    }
+    setTimeout(() => setToastMsg(""), 4000);
+  };
+
+  // Handle Update Division Status
+  const handleUpdateDivisionStatus = async (item: GenericOrgItem) => {
+    const nextStatus = item.status === "A" ? "C" : "A";
+    setItems((prev) =>
+      prev.map((it) => (it.id === item.id ? { ...it, status: nextStatus } : it))
+    );
+    try {
+      await axiosInstance.put(`/divisions/updatestatus/${item.id}?actived=${nextStatus}`);
+      setToastMsg(`ປ່ຽນສະຖານະເປັນ ${nextStatus === "A" ? "ໃຊ້ງານຢູ່" : "ປິດໃຊ້ງານ"} ສຳເລັດ!`);
+    } catch (err: unknown) {
+      console.warn("Failed to update division status:", err);
+      setItems((prev) =>
+        prev.map((it) => (it.id === item.id ? { ...it, status: item.status } : it))
+      );
+      setToastMsg("ເກີດຂໍ້ຜິດພາດໃນການປ່ຽນສະຖານະ");
+    }
+    setTimeout(() => setToastMsg(""), 4000);
   };
 
   // Handle Division Create/Edit Submit
@@ -734,12 +780,14 @@ export function OrganizationView() {
         onOpenEditDept={(item) =>
           setDeptModalState({ isOpen: true, mode: "edit", initialData: item })
         }
+        onUpdateDeptStatus={handleUpdateDeptStatus}
         onOpenCreateDivision={() =>
           setDivisionModalState({ isOpen: true, mode: "create", initialData: null })
         }
         onOpenEditDivision={(item) =>
           setDivisionModalState({ isOpen: true, mode: "edit", initialData: item })
         }
+        onUpdateDivisionStatus={handleUpdateDivisionStatus}
         onOpenCreateOffice={() =>
           setOfficeModalState({ isOpen: true, mode: "create", initialData: null })
         }

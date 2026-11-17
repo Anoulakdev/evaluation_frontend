@@ -18,6 +18,7 @@ import {
   XCircle,
   KeyRound,
   Edit3,
+  FileX,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ import {
 import { CreateUserModal } from "./CreateUserModal";
 import { EditUserModal } from "./EditUserModal";
 import { DeleteUserModal } from "./DeleteUserModal";
+import { DeleteEvaluationModal } from "./DeleteEvaluationModal";
 import { ResetPasswordModal } from "./ResetPasswordModal";
 import { ChangePasswordModal } from "./ChangePasswordModal";
 import { SyncUserModal } from "./SyncUserModal";
@@ -161,6 +163,7 @@ export function UserList() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleteEvalOpen, setIsDeleteEvalOpen] = useState(false);
   const [isResetPassOpen, setIsResetPassOpen] = useState(false);
   const [isChangePassOpen, setIsChangePassOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
@@ -547,6 +550,20 @@ export function UserList() {
     }
   };
 
+  const handleDeleteEvaluation = async (id: number) => {
+    try {
+      await axiosInstance.delete(`/users/evaluation/${id}`);
+      showToast("ລຶບຂໍ້ມູນການປະເມີນສຳເລັດ!");
+      fetchUsers();
+    } catch (err: unknown) {
+      const msg =
+        isAxiosError(err) && err.response?.data?.message
+          ? String(err.response.data.message)
+          : "ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນການປະເມີນ";
+      showToast(msg);
+    }
+  };
+
   const handleUpdateStatus = async (user: UserItem) => {
     const nextStatus = user.status === "A" ? "C" : "A";
     setUsers((prev) =>
@@ -761,6 +778,18 @@ export function UserList() {
                     }}
                   >
                     <KeyRound className="w-4 h-4 text-amber-600" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="ລຶບການປະເມີນ"
+                    onClick={() => {
+                      setSelectedUser(u);
+                      setIsDeleteEvalOpen(true);
+                    }}
+                  >
+                    <FileX className="w-4 h-4 text-rose-500" />
                   </Button>
 
                   <Button
@@ -1225,6 +1254,13 @@ export function UserList() {
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDeleteUser}
+        user={selectedUser}
+      />
+
+      <DeleteEvaluationModal
+        isOpen={isDeleteEvalOpen}
+        onClose={() => setIsDeleteEvalOpen(false)}
+        onConfirm={handleDeleteEvaluation}
         user={selectedUser}
       />
 

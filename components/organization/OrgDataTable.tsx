@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export interface GenericOrgItem {
   id: number;
   code?: string;
   name: string;
+  status?: string;
   detail?: string;
   parentId?: number;
   parentName?: string;
@@ -54,8 +56,10 @@ interface OrgDataTableProps {
   errorMsg: string;
   onOpenCreateDept?: () => void;
   onOpenEditDept?: (item: GenericOrgItem) => void;
+  onUpdateDeptStatus?: (item: GenericOrgItem) => void;
   onOpenCreateDivision?: () => void;
   onOpenEditDivision?: (item: GenericOrgItem) => void;
+  onUpdateDivisionStatus?: (item: GenericOrgItem) => void;
   onOpenCreateOffice?: () => void;
   onOpenEditOffice?: (item: GenericOrgItem) => void;
   onOpenCreateUnit?: () => void;
@@ -89,8 +93,10 @@ export function OrgDataTable({
   errorMsg,
   onOpenCreateDept,
   onOpenEditDept,
+  onUpdateDeptStatus,
   onOpenCreateDivision,
   onOpenEditDivision,
+  onUpdateDivisionStatus,
   onOpenCreateOffice,
   onOpenEditOffice,
   onOpenCreateUnit,
@@ -249,6 +255,43 @@ export function OrgDataTable({
       });
     }
 
+    if (activeCategory === "department" || activeCategory === "division") {
+      baseCols.push({
+        id: "status",
+        accessorKey: "status",
+        header: () => <div className="text-center">ສະຖານະ</div>,
+        cell: (info) => {
+          const row = info.row.original;
+          const status = row.status || "A";
+          const handleToggle = () => {
+            if (activeCategory === "department") {
+              onUpdateDeptStatus?.(row);
+            } else if (activeCategory === "division") {
+              onUpdateDivisionStatus?.(row);
+            }
+          };
+          return (
+            <div className="text-center">
+              <button
+                onClick={handleToggle}
+                className="cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                {status === "A" ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" /> ໃຊ້ງານຢູ່
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    <XCircle className="w-3 h-3 text-slate-400" /> ປິດໃຊ້ງານ
+                  </span>
+                )}
+              </button>
+            </div>
+          );
+        },
+      });
+    }
+
     baseCols.push({
       id: "actions",
       header: () => <div className="text-right">ຈັດການ</div>,
@@ -299,7 +342,7 @@ export function OrgDataTable({
     });
 
     return baseCols;
-  }, [activeCategory, activeMeta.titleLao, onOpenEditDept, onOpenEditDivision, onOpenEditOffice, onOpenEditUnit]);
+  }, [activeCategory, activeMeta.titleLao, onOpenEditDept, onOpenEditDivision, onOpenEditOffice, onOpenEditUnit, onUpdateDeptStatus, onUpdateDivisionStatus]);
 
   // TanStack Table Instance
   const table = useReactTable({
