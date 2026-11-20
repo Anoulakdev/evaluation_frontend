@@ -57,6 +57,7 @@ export function EvaluateRoleView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [isEvaluated, setIsEvaluated] = useState<boolean>(false);
 
   useEffect(() => {
     if (!user) {
@@ -68,10 +69,11 @@ export function EvaluateRoleView() {
     try {
       setLoading(true);
       setError(null);
-      const [rolesRes, countRes, listRes] = await Promise.allSettled([
+      const [rolesRes, countRes, listRes, evalStatusRes] = await Promise.allSettled([
         axiosInstance.get<RoleItem[]>("/roles/selectrole"),
         axiosInstance.get<CountAllResult>("/users/countall"),
         axiosInstance.get<EvaluationListItem[]>("/totals/resultlist"),
+        axiosInstance.get<boolean>("/users/evaluation-status"),
       ]);
 
       if (rolesRes.status === "fulfilled") {
@@ -86,6 +88,10 @@ export function EvaluateRoleView() {
 
       if (listRes.status === "fulfilled") {
         setResultList(listRes.value.data || []);
+      }
+
+      if (evalStatusRes.status === "fulfilled") {
+        setIsEvaluated(Boolean(evalStatusRes.value.data));
       }
     } catch (err: unknown) {
       console.error("Failed to fetch select roles:", err);
@@ -376,60 +382,62 @@ export function EvaluateRoleView() {
           </div>
 
           {/* Action card to /evaluatelist (Bottom right on desktop, below self-evaluation card on mobile) */}
-          <div className="flex justify-end pt-2 sm:pt-3">
-            <Link
-              href="/evaluatelist"
-              id="btn-navigate-evaluatelist"
-              className="w-full sm:w-auto sm:min-w-[360px] sm:max-w-md group block"
-            >
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 via-sky-700 to-indigo-700 border border-sky-400/30 hover:border-sky-300/60 p-4 sm:p-5 text-white shadow-md shadow-sky-900/10 hover:shadow-xl hover:shadow-sky-900/20 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer">
-                {/* Subtle Ambient Light Effects */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-sky-300/10 rounded-full blur-lg pointer-events-none" />
+          {!isEvaluated && (
+            <div className="flex justify-end pt-2 sm:pt-3">
+              <Link
+                href="/evaluatelist"
+                id="btn-navigate-evaluatelist"
+                className="w-full sm:w-auto sm:min-w-[360px] sm:max-w-md group block"
+              >
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 via-sky-700 to-indigo-700 border border-sky-400/30 hover:border-sky-300/60 p-4 sm:p-5 text-white shadow-md shadow-sky-900/10 hover:shadow-xl hover:shadow-sky-900/20 transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer">
+                  {/* Subtle Ambient Light Effects */}
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+                  <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-sky-300/10 rounded-full blur-lg pointer-events-none" />
 
-                <div className="relative z-10 flex items-center justify-between gap-4">
-                  {/* Left: Content */}
-                  <div className="space-y-1.5 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isAllApproved ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/25 backdrop-blur-xs border border-emerald-300/40 text-[11px] font-semibold text-emerald-200">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                          ຢືນຢັນສຳເລັດແລ້ວ
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-xs border border-white/20 text-[11px] font-medium text-sky-100">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                  <div className="relative z-10 flex items-center justify-between gap-4">
+                    {/* Left: Content */}
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {isAllApproved ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/25 backdrop-blur-xs border border-emerald-300/40 text-[11px] font-semibold text-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                            ຢືນຢັນສຳເລັດແລ້ວ
                           </span>
-                          ລໍຖ້າຢືນຢັນ
-                        </span>
-                      )}
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 backdrop-blur-xs border border-white/20 text-[11px] font-medium text-sky-100">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                            </span>
+                            ລໍຖ້າຢືນຢັນ
+                          </span>
+                        )}
 
-                      {countData && countData.evaluated > 0 && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-300/30 text-[11px] font-medium text-emerald-200">
-                          {isAllApproved
-                            ? `ຢືນຢັນແລ້ວ ${countData.evaluated} ທ່ານ`
-                            : `ປະເມີນແລ້ວ ${countData.evaluated} ທ່ານ`}
-                        </span>
-                      )}
+                        {Boolean(countData?.evaluated && countData.evaluated > 0) && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-300/30 text-[11px] font-medium text-emerald-200">
+                            {isAllApproved
+                              ? `ຢືນຢັນແລ້ວ ${countData?.evaluated} ທ່ານ`
+                              : `ປະເມີນແລ້ວ ${countData?.evaluated} ທ່ານ`}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-sky-100 transition-colors tracking-tight truncate">
+                        ໄປໜ້າຢືນຢັນການປະເມີນ
+                      </h3>
                     </div>
 
-                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-sky-100 transition-colors tracking-tight truncate">
-                      ໄປໜ້າຢືນຢັນການປະເມີນ
-                    </h3>
-                  </div>
-
-                  {/* Right: Modern Action Arrow */}
-                  <div className="shrink-0 pl-1">
-                    <div className="w-10 h-10 rounded-xl bg-white/15 group-hover:bg-white border border-white/20 group-hover:border-white flex items-center justify-center text-white group-hover:text-sky-700 shadow-sm transition-all duration-300 group-hover:translate-x-1 group-hover:shadow-md">
-                      <ArrowRight className="w-5 h-5" />
+                    {/* Right: Modern Action Arrow */}
+                    <div className="shrink-0 pl-1">
+                      <div className="w-10 h-10 rounded-xl bg-white/15 group-hover:bg-white border border-white/20 group-hover:border-white flex items-center justify-center text-white group-hover:text-sky-700 shadow-sm transition-all duration-300 group-hover:translate-x-1 group-hover:shadow-md">
+                        <ArrowRight className="w-5 h-5" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          </div>
+              </Link>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useEvaluationStore } from "@/store/useEvaluationStore";
+import { axiosInstance } from "@/lib/axiosInstance";
 import Cookies from "js-cookie";
 
 export function Navbar() {
@@ -29,6 +30,7 @@ export function Navbar() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { user, fetchUser, logout } = useAuthStore();
+  const [isEvaluated, setIsEvaluated] = useState<boolean>(false);
 
   useEffect(() => {
     if (!user) {
@@ -36,10 +38,34 @@ export function Navbar() {
     }
   }, [user, fetchUser]);
 
+  useEffect(() => {
+    if (!user?.roleId || ![2, 3, 4, 5, 6, 7, 8, 9, 15].includes(user.roleId)) {
+      return;
+    }
+    let isMounted = true;
+    const checkEvaluationStatus = async () => {
+      try {
+        const res = await axiosInstance.get<boolean>("/users/evaluation-status");
+        if (isMounted) {
+          setIsEvaluated(Boolean(res.data));
+        }
+      } catch {
+        // ignore errors silently
+      }
+    };
+    checkEvaluationStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.roleId, pathname]);
+
   // Click-outside listener to close profile dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
         setIsProfileOpen(false);
       }
     };
@@ -94,25 +120,28 @@ export function Navbar() {
         },
       ];
     }
-    if (
-      user?.roleId &&
-      [2, 3, 4, 5, 6, 7, 8, 9, 15].includes(user.roleId)
-    ) {
-      return [
+    if (user?.roleId && [2, 3, 4, 5, 6, 7, 8, 9, 15].includes(user.roleId)) {
+      const items = [
         {
           laoName: "ປະເມີນຜົນ",
           href: "/evaluaterole",
           icon: UserCheck,
         },
-        {
+      ];
+
+      // ເປີດ (ສະແດງ) ກໍລະນີ API ເປັນ false (ຍັງບໍ່ທັນສຳເລັດ) ແລະ ປິດ (ເຊື່ອງ) ກໍລະນີ API ເປັນ true (ສຳເລັດແລ້ວ)
+      if (!isEvaluated) {
+        items.push({
           laoName: "ລາຍການປະເມີນ",
           href: "/evaluatelist",
           icon: ClipboardList,
-        },
-      ];
+        });
+      }
+
+      return items;
     }
     return [];
-  }, [user?.roleId]);
+  }, [user?.roleId, isEvaluated]);
 
   const handleLogout = async () => {
     try {
@@ -145,7 +174,10 @@ export function Navbar() {
           <div className="flex items-center space-x-3">
             <Link
               href={
-                user?.roleId === 1 || user?.roleId === 11 || user?.roleId === 13 || user?.roleId === 14
+                user?.roleId === 1 ||
+                user?.roleId === 11 ||
+                user?.roleId === 13 ||
+                user?.roleId === 14
                   ? "/users"
                   : user?.roleId === 12
                     ? "/alltotalscore"
@@ -183,16 +215,20 @@ export function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs lg:text-sm font-medium whitespace-nowrap transition-all duration-200 ${isActive
-                    ? "bg-sky-50 text-sky-700 shadow-sm border border-sky-200/80 font-semibold"
-                    : "text-slate-600 hover:text-sky-600 hover:bg-slate-100/70"
-                    }`}
+                  className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs lg:text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                    isActive
+                      ? "bg-sky-50 text-sky-700 shadow-sm border border-sky-200/80 font-semibold"
+                      : "text-slate-600 hover:text-sky-600 hover:bg-slate-100/70"
+                  }`}
                 >
                   <Icon
-                    className={`w-4 h-4 shrink-0 ${isActive ? "text-sky-600" : "text-slate-400"
-                      }`}
+                    className={`w-4 h-4 shrink-0 ${
+                      isActive ? "text-sky-600" : "text-slate-400"
+                    }`}
                   />
-                  <span className="whitespace-nowrap font-medium">{item.laoName}</span>
+                  <span className="whitespace-nowrap font-medium">
+                    {item.laoName}
+                  </span>
                 </Link>
               );
             })}
@@ -236,7 +272,10 @@ export function Navbar() {
                       {displayName}
                     </p>
                     <p className="text-[11px] text-slate-500 font-mono truncate">
-                      {user?.email || (user?.username ? `@${user.username}` : "user@edl.com.la")}
+                      {user?.email ||
+                        (user?.username
+                          ? `@${user.username}`
+                          : "user@edl.com.la")}
                     </p>
                     <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-700 font-medium">
                       <ShieldCheck className="w-3 h-3" />
@@ -297,10 +336,11 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${isActive
-                  ? "bg-sky-50 text-sky-700 font-semibold"
-                  : "text-slate-700 hover:bg-sky-50 hover:text-sky-600"
-                  }`}
+                className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-sky-50 text-sky-700 font-semibold"
+                    : "text-slate-700 hover:bg-sky-50 hover:text-sky-600"
+                }`}
               >
                 <Icon className="w-5 h-5 text-sky-600" />
                 <div>
